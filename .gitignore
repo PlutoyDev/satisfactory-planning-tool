@@ -38,5 +38,6 @@ next-env.d.ts
 # node js code
 out-node
 
-# Community Resources provided by Coffee Stains Studios
+# Resources extracted from game
 res
+public/satisfactory
