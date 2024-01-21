@@ -2,11 +2,13 @@
   "name": "satisfactory-planning",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "parseDocs": "tsc -p ./tsconfig.node.json && node ./out-node/docParser/index.js"
   },
   "dependencies": {
     "react": "^18",

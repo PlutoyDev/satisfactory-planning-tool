@@ -1,0 +1,13 @@
+#!/bin/bash
+# Import resources from the game to this project.
+# This project is meant to be used on Windows in WSL2.
+
+# Check if res folder exists
+if [ ! -d "res" ]; then
+    mkdir res
+else
+    rm -f res/docs.json
+fi
+
+# Copies the docs from the game to this project
+cp "/mnt/c/Program Files (x86)/Steam/steamapps/common/Satisfactory/CommunityResources/Docs/Docs.json" res/docs.json

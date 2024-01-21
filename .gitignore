@@ -34,3 +34,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# node js code
+out-node
+
+# Community Resources provided by Coffee Stains Studios
+res
