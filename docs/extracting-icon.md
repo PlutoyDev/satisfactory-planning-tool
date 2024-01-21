@@ -30,7 +30,9 @@ Right click on each of the following files/folders and select `Save Folder's Pac
 
 - `FactoryGame/Content/FactoryGame/Resource/Parts`
 - `FactoryGame/Content/FactoryGame/Resource/RawResources`
+- `FactoryGame/Content/FactoryGame/Resource/Environment`
 - `FactoryGame/Content/FactoryGame/Buildable`
+- `FactoryGame/Content/FactoryGame/Events/Christmas/Parts`
 
 ## Finishing up
 
@@ -44,11 +46,15 @@ If you done everything correctly, you should have a folder structure that looks 
 res
 ├── extracted
 │   ├── FactoryGame
-│   │   ├── Content
-│   │   │   ├── FactoryGame
-│   │   │   │   ├── Buildable
-│   │   │   │   │   ├── Factory
-│   │   │   │   ├── Resource
-│   │   │   │   │   ├── Parts
-│   │   │   │   │   └── RawResources
+│   │   ├── Buildable
+│   │   │   ├── Factory
+│   │   ├── Resource
+│   │   │   ├── Parts
+│   │   │   ├── RawResources
+│   │   │   ├── Environment
+│   │   ├── Events
+│   │   │   ├── Christmas
+│   │   │   │   ├── Parts
 ```
+
+In parseDocs script, it will replace the `/Game/FactoryGame/` with `res/extracted/FactoryGame/` so that it can find the files.
