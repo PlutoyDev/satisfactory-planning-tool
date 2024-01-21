@@ -120,6 +120,6 @@ for (const item of [
 }
 
 await writeFile(
-  './public/parsed-data.json',
+  './public/satisfactory/simplified-docs.json',
   JSON.stringify(results, null, minifyJson ? undefined : 2)
 );
