@@ -3,11 +3,10 @@ import vike from 'vike/plugin';
 import react from '@vitejs/plugin-react-swc';
 
 export default defineConfig({
-  plugins: [react(), vike()],
-  base: '/',
+  plugins: [react(), vike({})],
   resolve: {
     alias: {
-      '@': '/src',
+      '$components/*': './src/components/*',
     },
   },
 });

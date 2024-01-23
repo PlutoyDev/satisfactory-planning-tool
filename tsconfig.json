@@ -14,12 +14,12 @@
     "isolatedModules": true,
     "jsx": "react-jsx",
     "incremental": true,
-    "types": ["vite/client"],
+    "types": ["vite/client", "vike-react"],
     "forceConsistentCasingInFileNames": true,
     "paths": {
-      "@/*": ["./src/*"]
+      "$components/*": ["./src/components/*"]
     }
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx"],
+  "include": ["src/**/*.ts", "src/**/*.tsx", "vite.env.d.ts"],
   "exclude": ["node_modules", "src-node"]
 }
