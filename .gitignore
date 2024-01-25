@@ -9,7 +9,7 @@ node_modules
 # build output
 dist
 public/satisfactory
-out_node
+out-node
 
 # vite
 vite.config.js.timestamp-*
