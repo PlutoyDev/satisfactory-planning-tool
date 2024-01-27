@@ -12,12 +12,14 @@
     "parseDocs": "tsc -p ./tsconfig.node.json && node ./out-node/docParser/index.js"
   },
   "dependencies": {
+    "@heroicons/react": "^2.1.1",
     "fflate": "^0.8.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "reactflow": "^11.10.3",
     "vite": "^5.0.12",
-    "wouter": "^2.12.1"
+    "wouter": "^2.12.1",
+    "zustand": "^4.5.0"
   },
   "devDependencies": {
     "@biomejs/biome": "1.5.3",
