@@ -1,85 +1,108 @@
 // Main Entry Point for the App
-import Router, { Switch, Route, Link } from 'wouter';
+import Router, { Switch, Route, Link, useLocation, useRoute } from 'wouter';
 import {
   getProdctionLineMetaDatas,
   setProductionLineMetaDatas,
 } from './lib/ProductionLine';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import { HomeIcon, ArrowRightIcon } from '@heroicons/react/24/outline';
 
 export function AppShell() {
+  return (
+    <div>
+      <Sidebar />
+    </div>
+  );
+}
+
+function AppLogo() {
+  /* 
+     <a href="/" class="btn btn-ghost btm-nav-md">
+        <span class="relative text-3xl -top-3 left-6 text-primary">Satisfactory</span>
+        <span class="relative text-2xl top-3 -left-12">Planner</span>
+      </a>
+   */
+  return (
+    <button type='button' className='btn btn-ghost btn-lg'>
+      <span className='relative text-3xl -top-3 left-6 text-primary'>
+        Satisfactory
+      </span>
+      <span className='relative text-2xl top-3 -left-12'>
+        Production Planner
+      </span>
+    </button>
+  );
+}
+
+function Sidebar() {
+  const [expanded, setExpanded] = useState(false);
   const [plmds, setPlmds] = useState(getProdctionLineMetaDatas());
 
-  // Sidebar with title, about, and production lines
   return (
-    <div className='drawer'>
-      <input id='drawer-toggle' type='checkbox' className='drawer-toggle' />
-      <div className='drawer-content'>
-        <label
-          className='btn btn-primary drawer-button'
-          htmlFor='drawer-toggle'
-          aria-label='open sidebar'
-        >
-          <svg
-            xmlns='http://www.w3.org/2000/svg'
-            fill='none'
-            viewBox='0 0 24 24'
-            strokeWidth={1.5}
-            stroke='currentColor'
-            className='w-6 h-6'
-          >
-            <title>Menu</title>
-            <path
-              strokeLinecap='round'
-              strokeLinejoin='round'
-              d='m5.25 4.5 7.5 7.5-7.5 7.5m6-15 7.5 7.5-7.5 7.5'
-            />
-          </svg>
-        </label>
-        {/* App content goes here */}
-      </div>
-      <div className='drawer-side'>
-        <label
-          className='drawer-overlay'
-          htmlFor='drawer-toggle'
-          aria-label='close sidebar'
-        />
-        <ul className='menu p-4 w-80 min-h-full bg-base-200 text-base-content'>
-          <p className='text-2xl menu-title'>App Title</p>
-          <li>
-            <Link href='/'>
-              <svg
-                xmlns='http://www.w3.org/2000/svg'
-                className='h-5 w-5'
-                fill='none'
-                viewBox='0 0 24 24'
-                stroke='currentColor'
-              >
-                <title>Home</title>
-                <path
-                  strokeLinecap='round'
-                  strokeLinejoin='round'
-                  strokeWidth='2'
-                  d='M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6'
-                />
-              </svg>
-              Home
-            </Link>
-          </li>
-          <li>
-            <Link href='/about'>About</Link>
-          </li>
+    <aside className='h-screen'>
+      <nav className='menu p-4 min-h-full bg-base-200 text-base-content rounded-box'>
+        <div className='menu-title h-20'>
           {
-            // Production Lines
-            plmds.map(plmd => (
-              <li key={plmd.id}>
-                <Link href={`/production-line/${plmd.id}`}>{plmd.title}</Link>
-              </li>
-            ))
+            // Maintain same height when expanded, expanded shows app logo, collapsed shows expand button
+            expanded ? (
+              <Link href='/'>
+                <AppLogo />
+              </Link>
+            ) : (
+              <>
+                <button
+                  className='block btn btn-ghost'
+                  onClick={() => setExpanded(true)}
+                  type='button'
+                >
+                  <ArrowRightIcon className='h-10 w-10 text-primary' />
+                </button>
+                <Link href='/'>
+                  <a className='block btn btn-ghost' href='/'>
+                    <HomeIcon className='h-10 w-10 text-primary' title='Home' />
+                  </a>
+                </Link>
+              </>
+            )
           }
-          {/* Sidebar Content */}
-        </ul>
-      </div>
-    </div>
+        </div>
+        <p className='text-2xl menu-title'>App Title</p>
+        {plmds.map(plmd => (
+          <SidebarLink
+            key={plmd.id}
+            title={plmd.title}
+            href={`/production-lines/${plmd.id}`}
+            icon={<img src={plmd.icon} alt={plmd.title} />}
+            expanded={expanded}
+          />
+        ))}
+      </nav>
+    </aside>
+  );
+}
+
+interface SidebarLinkProps {
+  title: string;
+  href: string;
+  icon: JSX.Element;
+  expanded: boolean;
+}
+
+function SidebarLink(props: SidebarLinkProps) {
+  const [isActive] = useRoute(props.href);
+  return (
+    <li>
+      <Link
+        href={props.href}
+        className={`menu-item ${isActive ? 'active' : ''}`}
+      >
+        <span className='icon'>{props.icon}</span>
+        {
+          // Only show the title if the sidebar is expanded
+          props.expanded && <span className='text'>{props.title}</span>
+        }
+      </Link>
+    </li>
   );
 }
 
