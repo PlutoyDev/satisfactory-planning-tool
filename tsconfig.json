@@ -14,7 +14,7 @@
     "isolatedModules": true,
     "jsx": "react-jsx",
     "incremental": true,
-    "types": ["vite/client", "vike-react"],
+    "types": ["vite/client"],
     "forceConsistentCasingInFileNames": true,
     "paths": {
       "$components/*": ["./src/components/*"]
