@@ -15,69 +15,71 @@ export function AppShell() {
   );
 }
 
-function AppLogo() {
-  /* 
-     <a href="/" class="btn btn-ghost btm-nav-md">
-        <span class="relative text-3xl -top-3 left-6 text-primary">Satisfactory</span>
-        <span class="relative text-2xl top-3 -left-12">Planner</span>
-      </a>
-   */
-  return (
-    <button type='button' className='btn btn-ghost btn-lg'>
-      <span className='relative text-3xl -top-3 left-6 text-primary'>
-        Satisfactory
-      </span>
-      <span className='relative text-2xl top-3 -left-12'>
-        Production Planner
-      </span>
-    </button>
-  );
-}
-
 function Sidebar() {
   const [expanded, setExpanded] = useState(false);
   const [plmds, setPlmds] = useState(getProdctionLineMetaDatas());
 
   return (
-    <aside className='h-screen'>
-      <nav className='menu p-4 min-h-full bg-base-200 text-base-content rounded-box'>
-        <div className='menu-title h-20'>
-          {
-            // Maintain same height when expanded, expanded shows app logo, collapsed shows expand button
-            expanded ? (
-              <Link href='/'>
-                <AppLogo />
-              </Link>
-            ) : (
-              <>
-                <button
-                  className='block btn btn-ghost'
-                  onClick={() => setExpanded(true)}
-                  type='button'
-                >
-                  <ArrowRightIcon className='h-10 w-10 text-primary' />
-                </button>
+    <>
+      {/* Overlay */}
+      <div
+        className='fixed inset-0 z-0 bg-black bg-opacity-50 cursor-pointer'
+        onClick={() => setExpanded(false)}
+        onKeyDown={() => setExpanded(false)}
+      />
+      {/* Sidebar */}
+      <aside className='relative z-10 bg-clip-border h-screen w-min'>
+        <nav className='menu min-h-full bg-base-200 text-base-content rounded-box'>
+          <div className='menu-title h-20'>
+            {
+              // Maintain same height when expanded, expanded shows app logo, collapsed shows expand button
+              expanded ? (
                 <Link href='/'>
-                  <a className='block btn btn-ghost' href='/'>
-                    <HomeIcon className='h-10 w-10 text-primary' title='Home' />
-                  </a>
+                  <AppLogo />
                 </Link>
-              </>
-            )
-          }
-        </div>
-        <p className='text-2xl menu-title'>App Title</p>
-        {plmds.map(plmd => (
-          <SidebarLink
-            key={plmd.id}
-            title={plmd.title}
-            href={`/production-lines/${plmd.id}`}
-            icon={<img src={plmd.icon} alt={plmd.title} />}
-            expanded={expanded}
-          />
-        ))}
-      </nav>
-    </aside>
+              ) : (
+                <>
+                  <button
+                    className='btn btn-ghost btn-sm'
+                    onClick={() => setExpanded(true)}
+                    type='button'
+                  >
+                    <ArrowRightIcon className='h-8 w-8 text-primary' />
+                  </button>
+                  <Link href='/'>
+                    <a className='btn btn-ghost btn-sm' href='/'>
+                      <HomeIcon className='h-8 w-8 text-primary' title='Home' />
+                    </a>
+                  </Link>
+                </>
+              )
+            }
+          </div>
+          {plmds.map(plmd => (
+            <SidebarLink
+              key={plmd.id}
+              title={plmd.title}
+              href={`/production-lines/${plmd.id}`}
+              icon={<img src={plmd.icon} alt={plmd.title} />}
+              expanded={expanded}
+            />
+          ))}
+        </nav>
+      </aside>
+    </>
+  );
+}
+
+function AppLogo() {
+  return (
+    <button type='button' className='btn btn-ghost btn-lg p-0 min-w-56'>
+      <span className='relative text-3xl -left-5 text-primary text-left'>
+        Satisfactory
+      </span>
+      <span className='relative -top-3 left-3 text-xl w-48 whitespace-nowrap text-right'>
+        Production Planner
+      </span>
+    </button>
   );
 }
 
