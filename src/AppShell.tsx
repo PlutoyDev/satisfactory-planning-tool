@@ -4,12 +4,18 @@ import {
   getProdctionLineMetaDatas,
   setProductionLineMetaDatas,
 } from './lib/ProductionLine';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { HomeIcon, ArrowRightIcon } from '@heroicons/react/24/outline';
+import Home from './pages/Home';
 
 export function AppShell() {
   return (
     <div>
+      <div className='z-0 ml-28'>
+        <Route path='/'>
+          <Home />
+        </Route>
+      </div>
       <Sidebar />
     </div>
   );
@@ -20,16 +26,18 @@ function Sidebar() {
   const [plmds, setPlmds] = useState(getProdctionLineMetaDatas());
 
   return (
-    <>
+    <div className='relative h-screen inline-block'>
       {/* Overlay */}
-      <div
-        className='fixed inset-0 z-0 bg-black bg-opacity-50 cursor-pointer'
-        onClick={() => setExpanded(false)}
-        onKeyDown={() => setExpanded(false)}
-      />
+      {expanded && (
+        <div
+          className='fixed inset-0 z-0 bg-black bg-opacity-50 cursor-pointer'
+          onClick={() => setExpanded(false)}
+          onKeyDown={() => setExpanded(false)}
+        />
+      )}
       {/* Sidebar */}
-      <aside className='relative z-10 bg-clip-border h-screen w-min'>
-        <nav className='menu min-h-full bg-base-200 text-base-content rounded-box'>
+      <aside className='relative z-50 bg-clip-border w-min h-full'>
+        <nav className='menu min-h-full bg-base-200 text-base-content'>
           <div className='menu-title h-20'>
             {
               // Maintain same height when expanded, expanded shows app logo, collapsed shows expand button
@@ -66,7 +74,7 @@ function Sidebar() {
           ))}
         </nav>
       </aside>
-    </>
+    </div>
   );
 }
 
