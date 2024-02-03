@@ -15,10 +15,7 @@
     "jsx": "react-jsx",
     "incremental": true,
     "types": ["vite/client"],
-    "forceConsistentCasingInFileNames": true,
-    "paths": {
-      "$components/*": ["./src/components/*"]
-    }
+    "forceConsistentCasingInFileNames": true
   },
   "include": ["src/**/*.ts", "src/**/*.tsx", "vite.env.d.ts"],
   "exclude": ["node_modules", "src-node"]
