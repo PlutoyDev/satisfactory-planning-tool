@@ -1,6 +1,6 @@
 // Main Entry Point for the App
 import { Route, Link, useRoute } from 'wouter';
-import { getProdctionLineMetaDatas } from './lib/ProductionLine';
+import useAppStore from './stores';
 import { useState } from 'react';
 import {
   HomeIcon,
@@ -25,7 +25,7 @@ export function AppShell() {
 
 function Sidebar() {
   const [expanded, setExpanded] = useState(false);
-  const [plmds, setPlmds] = useState(getProdctionLineMetaDatas());
+  const plmds = useAppStore(state => state.plMeta);
   const [isAtHome] = useRoute('/');
 
   return (
