@@ -10,7 +10,11 @@
   "linter": {
     "enabled": true,
     "rules": {
-      "recommended": true
+      "recommended": true,
+      "a11y": {
+        "recommended": true,
+        "useValidAnchor": "off"
+      }
     }
   }
 }
