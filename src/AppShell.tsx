@@ -13,7 +13,7 @@ import AppLogo from './components/AppLogo';
 export function AppShell() {
   return (
     <div>
-      <div className='absolute z-0 ml-28'>
+      <div className='absolute z-0 w-full h-full pt-2 pl-32 pr-4 p'>
         <Route path='/'>
           <Home />
         </Route>
@@ -29,7 +29,7 @@ function Sidebar() {
   const [isAtHome] = useRoute('/');
 
   return (
-    <div className='absolute h-screen inline-block min-w-28'>
+    <div className='absolute inline-block h-screen min-w-28'>
       {/* Overlay */}
       {expanded && (
         <div
@@ -39,21 +39,23 @@ function Sidebar() {
         >
           {/* Retract Button */}
           <ChevronDoubleLeftIcon
-            className='absolute top-4 right-4 h-8 w-8 text-primary'
+            className='absolute w-8 h-8 top-4 right-4 text-primary'
             onClick={() => setExpanded(false)}
           />
         </div>
       )}
       {/* Sidebar */}
-      <aside className='relative z-50 bg-clip-border w-min h-full'>
-        <nav className='menu min-h-full bg-base-200 text-base-content'>
-          <div className='menu-title h-16'>
+      <aside className='relative z-50 h-full bg-clip-border w-min'>
+        <nav className='min-h-full menu bg-base-100 text-base-content'>
+          <div className='h-16 menu-title'>
             {
               // Maintain same height when expanded, expanded shows app logo, collapsed shows expand button
               expanded ? (
-                <Link href='/'>
-                  <AppLogo />
-                </Link>
+                <button className='btn btn-ghost' type='button'>
+                  <Link href='/'>
+                    <AppLogo />
+                  </Link>
+                </button>
               ) : (
                 <>
                   <div className='tooltip tooltip-right' data-tip='Expand'>
@@ -62,14 +64,14 @@ function Sidebar() {
                       onClick={() => setExpanded(true)}
                       type='button'
                     >
-                      <ChevronDoubleRightIcon className='h-8 w-8 text-primary' />
+                      <ChevronDoubleRightIcon className='w-8 h-8 text-primary' />
                     </button>
                   </div>
                   <div className='tooltip tooltip-right' data-tip='Home'>
                     <Link href='/'>
                       <a className='btn btn-ghost btn-sm'>
                         <HomeIcon
-                          className='h-8 w-8 text-primary'
+                          className='w-8 h-8 text-primary'
                           title='Home'
                         />
                       </a>

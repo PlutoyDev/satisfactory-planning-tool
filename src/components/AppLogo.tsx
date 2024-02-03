@@ -1,13 +1,13 @@
 function AppLogo() {
   return (
-    <button type='button' className='btn btn-ghost btn-lg p-0 w-56'>
-      <span className='relative text-3xl -left-5 text-primary text-left'>
+    <div className='w-56 h-16 px-6 text-lg font-semibold text-center select-none min-h-16'>
+      <span className='relative block text-3xl text-left -top-1 -left-5 text-primary'>
         Satisfactory
       </span>
-      <span className='relative -top-3 left-3 text-xl w-48 whitespace-nowrap text-right'>
+      <span className='relative block w-48 text-xl text-right -top-3 left-2 whitespace-nowrap'>
         Production Planner
       </span>
-    </button>
+    </div>
   );
 }
 
