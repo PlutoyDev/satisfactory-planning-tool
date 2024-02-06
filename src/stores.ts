@@ -130,34 +130,32 @@ export const useStore = create<State>((set, get) => ({
     }
   },
   saveProdLine: async () => {
-    const store = get();
-    if (store.state !== "editing") return;
+    const store = get() as EditingState;
     set({ isSaving: true });
     const b64 = btoa(JSON.stringify({ nodes: store.nodes, edges: store.edges }));
-    const size = b64.length;
     const compressed = zlibSync(new TextEncoder().encode(b64));
     await idbSet(`prod-${store.prodId}`, compressed);
   },
   deleteProdLine: async (id: string) => {},
   onNodesChange: (changes: NodeChange[]) => {
-    const store = get();
-    if (store.state !== "editing") return;
+    const store = get() as EditingState;
     set({
       nodes: applyNodeChanges(changes, store.nodes),
+      isSaved: false,
     });
   },
   onEdgesChange: (changes: EdgeChange[]) => {
-    const store = get();
-    if (store.state !== "editing") return;
+    const store = get() as EditingState;
     set({
       edges: applyEdgeChanges(changes, store.edges),
+      isSaved: false,
     });
   },
   onConnect: (connection: Connection) => {
-    const store = get();
-    if (store.state !== "editing") return;
+    const store = get() as EditingState;
     set({
       edges: addEdge(connection, store.edges),
+      isSaved: false,
     });
   },
 }));
