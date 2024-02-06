@@ -6,8 +6,11 @@ import {
   HomeIcon,
   ChevronDoubleRightIcon,
   ChevronDoubleLeftIcon,
+  PlusIcon,
+  QuestionMarkCircleIcon,
 } from '@heroicons/react/24/outline';
 import Home from './pages/Home';
+import ProductionGraph, { routePattern } from './pages/ProductionGraph';
 import AppLogo from './components/AppLogo';
 
 export function AppShell() {
@@ -16,6 +19,9 @@ export function AppShell() {
       <div className='absolute z-0 w-full h-full pt-2 pl-32 pr-4 p'>
         <Route path='/'>
           <Home />
+        </Route>
+        <Route path={routePattern}>
+          <ProductionGraph />
         </Route>
       </div>
       <Sidebar />
@@ -46,12 +52,12 @@ function Sidebar() {
       )}
       {/* Sidebar */}
       <aside className='relative z-50 h-full bg-clip-border w-min'>
-        <nav className='min-h-full menu bg-base-100 text-base-content'>
-          <div className='h-16 menu-title'>
+        <nav className='min-h-full flex flex-col items-center py-4 bg-base-100 text-base-content'>
+          <div className='h-14'>
             {
               // Maintain same height when expanded, expanded shows app logo, collapsed shows expand button
               expanded ? (
-                <button className='btn btn-ghost' type='button'>
+                <button className='btn btn-ghost mt-1' type='button'>
                   <Link href='/'>
                     <AppLogo />
                   </Link>
@@ -67,16 +73,13 @@ function Sidebar() {
                       <ChevronDoubleRightIcon className='w-8 h-8 text-primary' />
                     </button>
                   </div>
-                  <div className='tooltip tooltip-right' data-tip='Home'>
-                    <Link href='/'>
-                      <a className='btn btn-ghost btn-sm'>
-                        <HomeIcon
-                          className='w-8 h-8 text-primary'
-                          title='Home'
-                        />
-                      </a>
-                    </Link>
-                  </div>
+                  <SidebarLink
+                    key='home'
+                    title='home'
+                    href='/'
+                    icon={<HomeIcon className='w-8 h-8 text-primary' />}
+                    expanded={expanded}
+                  />
                 </>
               )
             }
@@ -87,10 +90,23 @@ function Sidebar() {
               key={info.id}
               title={info.title}
               href={`/production-lines/${info.id}`}
-              icon={<img src={info.icon} alt={info.title} />}
+              icon={
+                info.icon === '???' ? (
+                  <p className='font-extrabold w-8 h-8 text-2xl'>?</p>
+                ) : (
+                  <img src={info.icon} alt={info.title} />
+                )
+              }
               expanded={expanded}
             />
           ))}
+          <SidebarLink
+            key='create'
+            title='Create new'
+            href='/production-lines/create'
+            icon={<PlusIcon className='inline-block w-8 h-8 text-primary' />}
+            expanded={expanded}
+          />
         </nav>
       </aside>
     </div>
@@ -107,22 +123,20 @@ interface SidebarLinkProps {
 function SidebarLink(props: SidebarLinkProps) {
   const [isActive] = useRoute(props.href);
   return (
-    <li>
-      <div className='tooltip tooltip-right' data-tip={props.title}>
-        <Link
-          href={props.href}
-          className={`menu-item ${isActive ? 'active' : ''}`}
-        >
-          <a className='btn btn-ghost btn-sm'>
-            <span className='icon'>{props.icon}</span>
-            {
-              // Only show the title if the sidebar is expanded
-              props.expanded && <span className='text'>{props.title}</span>
-            }
-          </a>
-        </Link>
-      </div>
-    </li>
+    <div className='tooltip tooltip-right' data-tip={props.title}>
+      <Link
+        href={props.href}
+        className={`menu-item ${isActive ? 'active' : ''}`}
+      >
+        <a className='btn btn-ghost btn-sm'>
+          <span className='icon'>{props.icon}</span>
+          {
+            // Only show the title if the sidebar is expanded
+            props.expanded && <span className='text'>{props.title}</span>
+          }
+        </a>
+      </Link>
+    </div>
   );
 }
 
