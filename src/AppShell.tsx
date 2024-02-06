@@ -1,6 +1,6 @@
 // Main Entry Point for the App
 import { Route, Link, useRoute } from 'wouter';
-import useAppStore from './stores';
+import useStore from './stores';
 import { useState } from 'react';
 import {
   HomeIcon,
@@ -25,7 +25,7 @@ export function AppShell() {
 
 function Sidebar() {
   const [expanded, setExpanded] = useState(false);
-  const plmds = useAppStore(state => state.plMeta);
+  const prodInfos = useStore(state => state.prodInfos);
   const [isAtHome] = useRoute('/');
 
   return (
@@ -82,12 +82,12 @@ function Sidebar() {
             }
           </div>
           <div className='divider'>{expanded ? 'Production Lines' : null}</div>
-          {plmds.map(plmd => (
+          {prodInfos.map(info => (
             <SidebarLink
-              key={plmd.id}
-              title={plmd.title}
-              href={`/production-lines/${plmd.id}`}
-              icon={<img src={plmd.icon} alt={plmd.title} />}
+              key={info.id}
+              title={info.title}
+              href={`/production-lines/${info.id}`}
+              icon={<img src={info.icon} alt={info.title} />}
               expanded={expanded}
             />
           ))}

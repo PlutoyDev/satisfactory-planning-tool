@@ -159,3 +159,5 @@ export const useStore = create<State>((set, get) => ({
     });
   },
 }));
+
+export default useStore;
