@@ -3,9 +3,10 @@ import { create } from "zustand";
 import { nanoid } from "nanoid";
 import { addEdge, applyEdgeChanges, applyNodeChanges } from "reactflow";
 import type { Node, Edge, OnConnect, OnNodesChange, OnEdgesChange, NodeChange, EdgeChange, Connection } from "reactflow";
-import { get as idbGet, set as idbSet } from "idb-keyval";
+import { get as idbGet, set as idbSet, del as idbDel } from "idb-keyval";
 import { unzlibSync, zlibSync } from "fflate";
 import { produce } from "immer";
+import { devtools } from "zustand/middleware";
 
 export interface ProdInfo {
   id: string;
@@ -16,7 +17,7 @@ export interface ProdInfo {
 export interface Actions {
   updateInfo: (id: string, info: Partial<Omit<ProdInfo, "id">>) => void;
 
-  createProdLine: () => void;
+  createProdLine: () => string; //returns id for link replacement
   loadProdLine: (id: string) => void;
   saveProdLine: () => void;
   deleteProdLine: (id: string) => void;
@@ -48,13 +49,11 @@ export interface LoadingErrorState extends GlobalState {
   state: "loading-error";
 }
 
-export interface EditingState extends GlobalState, ProdInfo, ProdLine {
+export interface EditingState extends GlobalState, ProdLine {
   // Will be in editing state when in production-line route
   state: "editing";
   // Currently editing Production line
-  prodId: string;
-  title: string;
-  icon: string;
+  info: ProdInfo;
 
   isSaving: boolean;
   isSaved: boolean;
@@ -68,8 +67,12 @@ export interface HomeState extends GlobalState {
 export type State = EditingState | LoadingState | LoadingErrorState | HomeState;
 
 function getStoredProdInfos(): ProdInfo[] {
-  const prods = localStorage.getItem("prods");
-  if (!prods || !Array.isArray(prods)) {
+  const json = localStorage.getItem("prods");
+  if (!json) {
+    return [];
+  }
+  const prods = JSON.parse(json) as ProdInfo[];
+  if (!Array.isArray(prods)) {
     return [];
   }
   return prods;
@@ -79,8 +82,8 @@ function saveProdInfos(prods: ProdInfo[]) {
   localStorage.setItem("prods", JSON.stringify(prods));
 }
 
-export const useStore = create<State>((set, get) => ({
-  state: "home",
+export const useStore = create<State>()((set, get) => ({
+  state: "home" as const,
   prodInfos: getStoredProdInfos(),
   updateInfo: (id, info) => {
     const index = get().prodInfos.findIndex((prod) => prod.id === id);
@@ -95,25 +98,27 @@ export const useStore = create<State>((set, get) => ({
   createProdLine: () => {
     const newProdInfo: ProdInfo = {
       id: nanoid(),
-      title: "New Production Line",
+      title: "Unnamed Production Line",
       icon: "???",
     };
+    const state = get();
+    const prodInfos = [...state.prodInfos, newProdInfo];
     set({
       state: "editing",
-      prodId: newProdInfo.id,
-      title: newProdInfo.title,
-      icon: newProdInfo.icon,
+      info: newProdInfo,
       nodes: [],
       edges: [],
       isSaving: false,
       isSaved: false,
-      prodInfos: [...get().prodInfos, newProdInfo],
+      prodInfos,
     });
+    saveProdInfos(prodInfos);
+    state.saveProdLine();
+    return newProdInfo.id;
   },
   loadProdLine: async (id: string) => {
     // Load from indexeddb, its stored with prefix 'prod-'
     set({ state: "loading" });
-    console.log("Loading Production Line Data", { id });
     try {
       const prodInfo = get().prodInfos.find((prod) => prod.id === id);
       const prod = await idbGet(`prod-${id}`);
@@ -124,7 +129,7 @@ export const useStore = create<State>((set, get) => ({
       const data = JSON.parse(atob(new TextDecoder().decode(unzlibSync(prod)))) as ProdLine;
       set({
         state: "editing",
-        ...prodInfo,
+        info: prodInfo,
         ...data,
         isSaving: false,
         isSaved: true,
@@ -139,7 +144,7 @@ export const useStore = create<State>((set, get) => ({
     set({ isSaving: true });
     const b64 = btoa(JSON.stringify({ nodes: store.nodes, edges: store.edges }));
     const compressed = zlibSync(new TextEncoder().encode(b64));
-    await idbSet(`prod-${store.prodId}`, compressed);
+    await idbSet(`prod-${store.info.id}`, compressed);
   },
   deleteProdLine: async (id: string) => {},
   onNodesChange: (changes: NodeChange[]) => {

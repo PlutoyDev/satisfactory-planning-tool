@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useLayoutEffect } from 'react';
 import { useRoute, useLocation } from 'wouter';
 import useStore, { type EditingState } from '../stores';
 
@@ -9,7 +9,7 @@ export function ProductionGraph() {
   const [, navigate] = useLocation();
   const store = useStore();
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     // Set store.state into editing
     if (!params?.id) {
       navigate('/');
@@ -17,7 +17,8 @@ export function ProductionGraph() {
     }
 
     if (params.id === 'create') {
-      store.createProdLine();
+      const id = store.createProdLine();
+      navigate(`/production-lines/${id}`, { replace: true });
       return;
     }
 
@@ -35,8 +36,10 @@ export function ProductionGraph() {
 
   return (
     <div>
-      <h1>Production Grasph</h1>
-      <p>Production ID: {store.prodId}</p>
+      <h1>Production Graph</h1>
+      <p>Production ID: {store.info.id}</p>
     </div>
   );
 }
+
+export default ProductionGraph;
