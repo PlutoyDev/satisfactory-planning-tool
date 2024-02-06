@@ -7,13 +7,13 @@ import { get as idbGet, set as idbSet } from "idb-keyval";
 import { unzlibSync, zlibSync } from "fflate";
 import { produce } from "immer";
 
-interface ProdInfo {
+export interface ProdInfo {
   id: string;
   title: string;
   icon: string;
 }
 
-interface Actions {
+export interface Actions {
   updateInfo: (id: string, info: Partial<Omit<ProdInfo, "id">>) => void;
 
   createProdLine: () => void;
@@ -27,24 +27,28 @@ interface Actions {
   onEdgesChange: OnEdgesChange;
 }
 
-interface GlobalState extends Actions {
+export interface GlobalState extends Actions {
   // Will be in global state when in any route
   state: string;
   prodInfos: ProdInfo[];
 }
 
-interface ProdLine {
+export interface ProdLine {
   // Production line graph's nodes and edges
   nodes: Node[];
   edges: Edge[];
 }
 
-interface LoadingState extends GlobalState {
+export interface LoadingState extends GlobalState {
   // Will be in loading state when in production-line route
-  state: "loading" | "loading-error";
+  state: "loading";
 }
 
-interface EditingState extends GlobalState, ProdInfo, ProdLine {
+export interface LoadingErrorState extends GlobalState {
+  state: "loading-error";
+}
+
+export interface EditingState extends GlobalState, ProdInfo, ProdLine {
   // Will be in editing state when in production-line route
   state: "editing";
   // Currently editing Production line
@@ -56,12 +60,12 @@ interface EditingState extends GlobalState, ProdInfo, ProdLine {
   isSaved: boolean;
 }
 
-interface HomeState extends GlobalState {
+export interface HomeState extends GlobalState {
   // Will be in home state when in home route
   state: "home";
 }
 
-type State = EditingState | LoadingState | HomeState;
+export type State = EditingState | LoadingState | LoadingErrorState | HomeState;
 
 function getStoredProdInfos(): ProdInfo[] {
   const prods = localStorage.getItem("prods");
@@ -109,6 +113,7 @@ export const useStore = create<State>((set, get) => ({
   loadProdLine: async (id: string) => {
     // Load from indexeddb, its stored with prefix 'prod-'
     set({ state: "loading" });
+    console.log("Loading Production Line Data", { id });
     try {
       const prodInfo = get().prodInfos.find((prod) => prod.id === id);
       const prod = await idbGet(`prod-${id}`);
@@ -125,7 +130,7 @@ export const useStore = create<State>((set, get) => ({
         isSaved: true,
       });
     } catch (error) {
-      console.error("Error loading production line", error);
+      console.error("Error loading production line", { id }, error);
       set({ state: "loading-error" });
     }
   },
