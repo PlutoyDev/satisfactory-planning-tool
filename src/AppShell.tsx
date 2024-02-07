@@ -16,7 +16,7 @@ import AppLogo from './components/AppLogo';
 export function AppShell() {
   return (
     <div>
-      <div className='absolute z-0 w-full h-full pt-2 pl-32 pr-4 p'>
+      <div className='absolute z-0 w-full h-full pt-2 pl-20 pr-4 p'>
         <Route path='/'>
           <Home />
         </Route>
@@ -35,7 +35,7 @@ function Sidebar() {
   const [isAtHome] = useRoute('/');
 
   return (
-    <div className='absolute inline-block h-screen min-w-28'>
+    <div className='absolute inline-block h-screen '>
       {/* Overlay */}
       {expanded && (
         <div
@@ -52,7 +52,7 @@ function Sidebar() {
       )}
       {/* Sidebar */}
       <aside className='relative z-50 h-full bg-clip-border w-min'>
-        <nav className='min-h-full flex flex-col items-center py-4 bg-base-100 text-base-content'>
+        <nav className='min-h-full flex flex-col items-center py-4 bg-base-100 text-base-content min-w-16'>
           <div className='h-14'>
             {
               // Maintain same height when expanded, expanded shows app logo, collapsed shows expand button
@@ -128,11 +128,15 @@ function SidebarLink(props: SidebarLinkProps) {
         href={props.href}
         className={`menu-item ${isActive ? 'active' : ''}`}
       >
-        <a className='btn btn-ghost btn-sm'>
+        <a className='btn btn-ghost flex-nowrap btn-sm '>
           <span className='icon'>{props.icon}</span>
           {
             // Only show the title if the sidebar is expanded
-            props.expanded && <span className='text'>{props.title}</span>
+            props.expanded && (
+              <span className='text-ellipsis max-w-60 whitespace-nowrap overflow-hidden'>
+                {props.title}
+              </span>
+            )
           }
         </a>
       </Link>
