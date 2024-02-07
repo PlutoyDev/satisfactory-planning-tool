@@ -1,6 +1,7 @@
 import { useLayoutEffect } from 'react';
 import { useRoute, useLocation } from 'wouter';
-import useStore, { type EditingState } from '../stores';
+import useStore from '../stores';
+import ReactFlow, { Background } from 'reactflow';
 
 export const routePattern = '/production-lines/:id' as const;
 
@@ -35,10 +36,18 @@ export function ProductionGraph() {
   }
 
   return (
-    <div>
-      <h1>Production Graph</h1>
-      <p>Production ID: {store.info.id}</p>
-    </div>
+    <ReactFlow
+      nodes={store.nodes}
+      edges={store.edges}
+      onNodesChange={store.onNodesChange}
+      onEdgesChange={store.onEdgesChange}
+      onConnect={store.onConnect}
+      fitView
+      // TODO: Make a better attribution, then hide this (It doesn't look good with this background)
+      proOptions={{ hideAttribution: false }}
+    >
+      <Background />
+    </ReactFlow>
   );
 }
 
