@@ -1,12 +1,16 @@
 // Main application state store using zustand
-import { create } from "zustand";
+import { create, type StateCreator } from "zustand";
 import { nanoid } from "nanoid";
 import { addEdge, applyEdgeChanges, applyNodeChanges } from "reactflow";
 import type { Node, Edge, OnConnect, OnNodesChange, OnEdgesChange, NodeChange, EdgeChange, Connection } from "reactflow";
 import { get as idbGet, set as idbSet, del as idbDel } from "idb-keyval";
 import { unzlibSync, zlibSync } from "fflate";
 import { produce } from "immer";
-import { devtools } from "zustand/middleware";
+import { devtools, type DevtoolsOptions } from "zustand/middleware";
+
+const devtoolsOptions: DevtoolsOptions = {
+  enabled: !import.meta.env.PROD,
+};
 
 export interface ProdInfo {
   id: string;
@@ -18,9 +22,10 @@ export interface Actions {
   updateInfo: (id: string, info: Partial<Omit<ProdInfo, "id">>) => void;
 
   createProdLine: () => string; //returns id for link replacement
-  loadProdLine: (id: string) => void;
-  saveProdLine: () => void;
-  deleteProdLine: (id: string) => void;
+  loadProdLine: (id: string) => Promise<void>;
+  saveProdLine: () => Promise<void>;
+  deleteProdLine: (id: string) => Promise<void>;
+  deleteProdLineCancel: () => void;
 
   // Callbacks for graph changes
   onConnect: OnConnect;
@@ -57,6 +62,9 @@ export interface EditingState extends GlobalState, ProdLine {
 
   isSaving: boolean;
   isSaved: boolean;
+
+  confirmingDelete: boolean;
+  isDeleting: boolean;
 }
 
 export interface HomeState extends GlobalState {
@@ -82,7 +90,7 @@ function saveProdInfos(prods: ProdInfo[]) {
   localStorage.setItem("prods", JSON.stringify(prods));
 }
 
-export const useStore = create<State>()((set, get) => ({
+const stateCreator: StateCreator<State> = (set, get) => ({
   state: "home" as const,
   prodInfos: getStoredProdInfos(),
   updateInfo: (id, info) => {
@@ -104,13 +112,15 @@ export const useStore = create<State>()((set, get) => ({
     const state = get();
     const prodInfos = [...state.prodInfos, newProdInfo];
     set({
+      prodInfos,
       state: "editing",
       info: newProdInfo,
       nodes: [],
       edges: [],
       isSaving: false,
       isSaved: false,
-      prodInfos,
+      confirmingDelete: false,
+      isDeleting: false,
     });
     saveProdInfos(prodInfos);
     state.saveProdLine();
@@ -120,9 +130,19 @@ export const useStore = create<State>()((set, get) => ({
     // Load from indexeddb, its stored with prefix 'prod-'
     set({ state: "loading" });
     try {
-      const prodInfo = get().prodInfos.find((prod) => prod.id === id);
+      const storeProdInfo = get().prodInfos;
+      const prodInfo = storeProdInfo.find((prod) => prod.id === id);
       const prod = await idbGet(`prod-${id}`);
       if (!prod || !prodInfo) {
+        // TODO: Show it in UI
+        console.error("Unable to find production line", { id, infoMissing: !prodInfo, graphMissing: !prod });
+        if (!prod && prodInfo) {
+          const indexToDelete = storeProdInfo.findIndex((prod) => prod.id === id);
+          set({
+            prodInfos: storeProdInfo.toSpliced(indexToDelete, 1),
+          });
+        }
+        set({ state: "loading-error" });
         return;
       }
       // Unzlib the data, and parse
@@ -133,8 +153,11 @@ export const useStore = create<State>()((set, get) => ({
         ...data,
         isSaving: false,
         isSaved: true,
+        confirmingDelete: false,
+        isDeleting: false,
       });
     } catch (error) {
+      // TODO: Show it in UI
       console.error("Error loading production line", { id }, error);
       set({ state: "loading-error" });
     }
@@ -146,7 +169,34 @@ export const useStore = create<State>()((set, get) => ({
     const compressed = zlibSync(new TextEncoder().encode(b64));
     await idbSet(`prod-${store.info.id}`, compressed);
   },
-  deleteProdLine: async (id: string) => {},
+  closeProdline: async () => {
+    const store = get() as EditingState;
+    if (store.isSaved === false) {
+      await store.saveProdLine();
+    }
+    set({ state: "home" });
+  },
+  deleteProdLine: async (id: string) => {
+    // Can only delete in edit page
+    const store = get() as EditingState;
+    const indexToDelete = store.prodInfos.findIndex((prod) => prod.id === id);
+    if (!indexToDelete) return;
+
+    if (!store.confirmingDelete) {
+      // default should be false
+      set({ confirmingDelete: true, isDeleting: true });
+    } else {
+      set({ confirmingDelete: false });
+      await idbDel(`prod-${id}`);
+      set({
+        prodInfos: store.prodInfos.toSpliced(indexToDelete, 1),
+        isDeleting: false,
+      });
+    }
+  },
+  deleteProdLineCancel: () => {
+    set({ confirmingDelete: false, isDeleting: false });
+  },
   onNodesChange: (changes: NodeChange[]) => {
     const store = get() as EditingState;
     set({
@@ -168,6 +218,8 @@ export const useStore = create<State>()((set, get) => ({
       isSaved: false,
     });
   },
-}));
+});
+
+export const useStore = create<State>()(devtools(stateCreator, devtoolsOptions));
 
 export default useStore;
