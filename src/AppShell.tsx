@@ -1,7 +1,6 @@
 // Main Entry Point for the App
-import { Route, Link, useRoute } from 'wouter';
-import useStore from './stores';
-import { useState } from 'react';
+import { Route, Link, useRoute, useLocation } from 'wouter';
+import { useCallback, useEffect, useState } from 'react';
 import {
   HomeIcon,
   ChevronDoubleRightIcon,
@@ -12,8 +11,53 @@ import {
 import Home from './pages/Home';
 import ProductionGraph, { routePattern } from './pages/ProductionGraph';
 import AppLogo from './components/AppLogo';
+import { nanoid } from 'nanoid';
+
+interface ProductionLineInfo {
+  id: string;
+  title: string;
+  icon: string;
+}
 
 export function AppShell() {
+  // Production Line Info state are stored here for now, maybe move to a context later
+  const [, navigate] = useLocation();
+  const [prodInfos, setProdInfos] = useState<ProductionLineInfo[]>(() => {
+    const stored = localStorage.getItem('prodInfos');
+    return stored ? JSON.parse(stored) : [];
+  });
+
+  const createProdLine = useCallback(() => {
+    const id = nanoid(8);
+    setProdInfos(cur => [
+      ...cur,
+      { id, title: 'Unnamed Production Line', icon: '???' },
+    ]);
+    navigate(`/production-lines/${id}`);
+  }, [navigate]);
+
+  const updateProdLine = useCallback(
+    (id: string, changes: Partial<Omit<ProductionLineInfo, 'id'>>) => {
+      setProdInfos(cur =>
+        cur.map(info => (info.id === id ? { ...info, ...changes } : info))
+      );
+    },
+    []
+  );
+
+  const deleteProdLine = useCallback(
+    (id: string) => {
+      setProdInfos(cur => cur.filter(info => info.id !== id));
+      navigate('/');
+    },
+    [navigate]
+  );
+
+  useEffect(() => {
+    // Save to local storage
+    localStorage.setItem('prodInfos', JSON.stringify(prodInfos));
+  }, [prodInfos]);
+
   return (
     <div>
       <div className='absolute z-0 w-full h-full pt-2 pl-20 pr-4 p'>
@@ -24,14 +68,20 @@ export function AppShell() {
           <ProductionGraph />
         </Route>
       </div>
-      <Sidebar />
+      <Sidebar prodInfos={prodInfos} createFn={createProdLine} />
     </div>
   );
 }
 
-function Sidebar() {
+function Sidebar({
+  prodInfos,
+  createFn,
+}: {
+  prodInfos: ProductionLineInfo[];
+  createFn: () => void;
+}) {
   const [expanded, setExpanded] = useState(false);
-  const prodInfos = useStore(state => state.prodInfos);
+
   const [isAtHome] = useRoute('/');
 
   return (
@@ -57,25 +107,26 @@ function Sidebar() {
             {
               // Maintain same height when expanded, expanded shows app logo, collapsed shows expand button
               expanded ? (
-                <button className='btn btn-ghost mt-1' type='button'>
-                  <Link href='/'>
-                    <AppLogo />
-                  </Link>
-                </button>
+                <Link href='/'>
+                  <a>
+                    <button className='btn btn-ghost mt-1' type='button'>
+                      <AppLogo />
+                    </button>
+                  </a>
+                </Link>
               ) : (
                 <>
-                  <div className='tooltip tooltip-right' data-tip='Expand'>
-                    <button
-                      className='btn btn-ghost btn-sm'
-                      onClick={() => setExpanded(true)}
-                      type='button'
-                    >
+                  <SidebarButton
+                    title='Expand'
+                    onclick={() => setExpanded(true)}
+                    icon={
                       <ChevronDoubleRightIcon className='w-8 h-8 text-primary' />
-                    </button>
-                  </div>
+                    }
+                    expanded={expanded}
+                  />
                   <SidebarLink
                     key='home'
-                    title='home'
+                    title='Home'
                     href='/'
                     icon={<HomeIcon className='w-8 h-8 text-primary' />}
                     expanded={expanded}
@@ -100,10 +151,10 @@ function Sidebar() {
               expanded={expanded}
             />
           ))}
-          <SidebarLink
+          <SidebarButton
             key='create'
             title='Create new'
-            href='/production-lines/create'
+            onclick={createFn}
             icon={<PlusIcon className='inline-block w-8 h-8 text-primary' />}
             expanded={expanded}
           />
@@ -121,25 +172,44 @@ interface SidebarLinkProps {
 }
 
 function SidebarLink(props: SidebarLinkProps) {
+  const { href, ...btnProps } = props;
   const [isActive] = useRoute(props.href);
   return (
-    <div className='tooltip tooltip-right' data-tip={props.title}>
-      <Link
-        href={props.href}
-        className={`menu-item ${isActive ? 'active' : ''}`}
+    <Link href={props.href} className={`menu-item ${isActive ? 'active' : ''}`}>
+      <a>
+        <SidebarButton {...btnProps} />
+      </a>
+    </Link>
+  );
+}
+
+interface SidebarButtonProps {
+  title: string;
+  onclick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
+  icon: JSX.Element;
+  expanded: boolean;
+}
+
+function SidebarButton(props: SidebarButtonProps) {
+  const { title, onclick, icon, expanded } = props;
+
+  return (
+    <div className='tooltip tooltip-right' data-tip={title}>
+      <button
+        className='btn btn-ghost btn-sm flex-nowrap'
+        onClick={onclick}
+        type='button'
       >
-        <a className='btn btn-ghost flex-nowrap btn-sm '>
-          <span className='icon'>{props.icon}</span>
-          {
-            // Only show the title if the sidebar is expanded
-            props.expanded && (
-              <span className='text-ellipsis max-w-60 whitespace-nowrap overflow-hidden'>
-                {props.title}
-              </span>
-            )
-          }
-        </a>
-      </Link>
+        <span className='icon'>{icon}</span>
+        {
+          // Only show the title if the sidebar is expanded
+          expanded && (
+            <span className='text-ellipsis max-w-60 whitespace-nowrap overflow-hidden'>
+              {title}
+            </span>
+          )
+        }
+      </button>
     </div>
   );
 }
