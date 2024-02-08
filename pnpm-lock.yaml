@@ -11,6 +11,9 @@ dependencies:
   fflate:
     specifier: ^0.8.1
     version: 0.8.1
+  idb:
+    specifier: ^8.0.0
+    version: 8.0.0
   idb-keyval:
     specifier: ^6.2.1
     version: 6.2.1
@@ -1355,6 +1358,10 @@ packages:
 
   /idb-keyval@6.2.1:
     resolution: {integrity: sha512-8Sb3veuYCyrZL+VBt9LJfZjLUPWVvqn8tG28VqYNFCo43KHcKuq+b4EiXGeuaLAQWL2YmyDgMp2aSpH9JHsEQg==}
+    dev: false
+
+  /idb@8.0.0:
+    resolution: {integrity: sha512-l//qvlAKGmQO31Qn7xdzagVPPaHTxXx199MhrAFuVBTPqydcPYBWjkrbv4Y0ktB+GmWOiwHl237UUOrLmQxLvw==}
     dev: false
 
   /immer@10.0.3:
