@@ -1,8 +1,16 @@
-import { readFile, writeFile } from 'fs/promises';
+import { readFile, writeFile, mkdir } from 'fs/promises';
 import { parseRecipe } from './recipeParser.js';
 import { parseItem } from './itemParser.js';
 import { parseProductionMachine } from './buildableParser.js';
 import { parsePowerGenerator } from './generatorParser.js';
+
+// Ensure the public/satisfactory directory exists
+await mkdir('./public/satisfactory', { recursive: true }).catch(err => {
+  if (err.code !== 'EEXIST') {
+    console.error(err);
+    process.exit(1);
+  }
+});
 
 const minifyJson = !process.argv.includes('--no-minify');
 if (!minifyJson) {
