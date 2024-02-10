@@ -14,7 +14,7 @@
     "isolatedModules": true,
     "jsx": "react-jsx",
     "incremental": true,
-    "types": ["vite/client", "react/canary"],
+    "types": ["vite/client", "react/canary", "react-dom/canary"],
     "forceConsistentCasingInFileNames": true
   },
   "include": ["src/**/*.ts", "src/**/*.tsx", "vite.env.d.ts"],
