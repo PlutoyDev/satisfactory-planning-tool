@@ -23,7 +23,7 @@ export interface ItemNodeData {
 
 export function ItemNode({ data }: NodeProps) {
   const { id, speed } = data as ItemNodeData;
-  const itemName = id ? use(useDocs(({ items, resources }) => items[id]?.displayName ?? 'Oops', [id])) : 'Unknown';
+  const itemName = id ? useDocs(({ items, resources }) => items[id]?.displayName ?? 'Oops', [id]) : 'Unknown';
 
   return (
     <>
@@ -38,21 +38,33 @@ export function ItemNode({ data }: NodeProps) {
 }
 
 export interface ResourceNodeData {
-  id: string;
-  speed: number;
+  id?: string;
+  speed?: number;
 }
 
 export function ResourceNode({ data }: NodeProps) {
   const { id, speed } = data as ResourceNodeData;
-  const itemName = use(useDocs(({ resources }) => resources[id]?.displayName ?? 'Oops', [id]));
+  const rInfo =
+    id &&
+    useDocs(({ resources }) => {
+      const resource = resources[id];
+      return { imgSrc: resource?.iconPath ?? null, itemName: resource?.displayName ?? 'Unknown' };
+    });
 
   return (
     <>
-      <div className='flex flex-col items-center justify-center'>
-        <p className='text-center font-semibold'>{itemName}</p>
-        <p className='text-center'>{speed} / min</p>
+      <div className='flex flex-col items-center justify-center rounded-md bg-[#76BABF] px-4 py-1 text-primary-content'>
+        {rInfo ? (
+          <>
+            {rInfo.imgSrc && <img src={rInfo.imgSrc} alt={rInfo.itemName} className='h-8 w-8' />}
+            <p className='text-center font-semibold'>{rInfo.itemName}</p>
+            <p className='text-center'>{speed} / min</p>
+          </>
+        ) : (
+          <p className='text-center font-semibold'>Unset</p>
+        )}
       </div>
-      <Handle type='source' position={Position.Right} />
+      <Handle className='bg-[#76BABF]' type='source' position={Position.Right} />
     </>
   );
 }

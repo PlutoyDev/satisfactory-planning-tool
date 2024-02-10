@@ -1,5 +1,5 @@
 // Docs.json context provider with react canary use context.
-import { createContext, useCallback, useMemo } from 'react';
+import { createContext, use, useCallback, useMemo } from 'react';
 
 interface Docs {
   items: Record<string, Item>;
@@ -60,8 +60,15 @@ export interface Generator {
 
 const docsPromise = fetch('/satisfactory/simplified-docs.json').then(res => res.json()) as Promise<Docs>;
 // const useDocs = async <T>(selector: (docs: Docs) => T) => selector(await docsPromise);
+
+/**
+ * Use the docs content that has been fetched when the app is loaded.
+ * @param selector selector function that takes the docs and returns the value you want
+ * @param dependencies dependencies for the selector function
+ * @returns the awaited value from the selector function, need to be used with suspense
+ */
 function useDocs<T>(selector: (docs: Docs) => T, dependencies: unknown[] = []) {
-  return useMemo(() => docsPromise.then(selector), dependencies);
+  return use(useMemo(() => docsPromise.then(selector), dependencies));
 }
 
 export default useDocs;
