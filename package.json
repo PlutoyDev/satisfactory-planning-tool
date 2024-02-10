@@ -7,8 +7,6 @@
     "dev": "vite",
     "serve": "vite preview",
     "build": "tsc && vite build",
-    "lint": "biome lint ./src",
-    "lint:fix": "biome check --apply ./src",
     "parseDocs": "tsc -p ./tsconfig.node.json && node ./out-node/docParser/index.js"
   },
   "dependencies": {
