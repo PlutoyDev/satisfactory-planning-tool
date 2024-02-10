@@ -16,6 +16,8 @@ import ReactFlow, {
 import * as idb from 'idb';
 import useLegacyEffect from '../hooks/useLegacyEffect';
 import { ArrowsPointingOutIcon, ArrowsPointingInIcon } from '@heroicons/react/24/outline';
+import { screwFactoryNode } from '../misc/screwTest';
+import nodeTypes from '../components/CustomNodes';
 
 export const routePattern = '/production-lines/:id' as const;
 
@@ -71,14 +73,19 @@ export function ProductionGraph() {
   const onConnect: OnConnect = useCallback(connection => setEdges(edges => addEdge(connection, edges)), []);
 
   const loadProductionLine = useCallback(async (prodLineId: string) => {
-    const db = await openProdLineDb();
-    const [nodes, edges] = await Promise.all([
-      db.getAllFromIndex('nodes', 'prodLineId', prodLineId),
-      db.getAllFromIndex('edges', 'prodLineId', prodLineId),
-    ]);
-    setNodes(nodes);
-    setEdges(edges);
-    db.close();
+    if (prodLineId !== 'screwTest') {
+      const db = await openProdLineDb();
+      const [nodes, edges] = await Promise.all([
+        db.getAllFromIndex('nodes', 'prodLineId', prodLineId),
+        db.getAllFromIndex('edges', 'prodLineId', prodLineId),
+      ]);
+      setNodes(nodes);
+      setEdges(edges);
+      db.close();
+    } else {
+      setNodes(screwFactoryNode);
+      setEdges([]);
+    }
   }, []);
 
   const saveProductionLine = useCallback(async (prodLineId: string, nodes: Node[], edges: Edge[]) => {
@@ -157,6 +164,7 @@ export function ProductionGraph() {
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         fitView
+        nodeTypes={nodeTypes}
         // TODO: Make a better attribution, then hide this (It doesn't look good with this background)
         proOptions={{ hideAttribution: false }}
       >
