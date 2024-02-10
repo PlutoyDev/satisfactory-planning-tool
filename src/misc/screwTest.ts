@@ -11,4 +11,13 @@ export const screwFactoryNode: FactoryNode[] = [
       speed: 30,
     },
   },
+  {
+    id: 'final',
+    type: 'item',
+    position: { x: 300, y: 0 },
+    data: {
+      id: 'Desc_IronScrew_C',
+      speed: 60,
+    },
+  },
 ];

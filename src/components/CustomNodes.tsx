@@ -23,16 +23,30 @@ export interface ItemNodeData {
 
 export function ItemNode({ data }: NodeProps) {
   const { id, speed } = data as ItemNodeData;
-  const itemName = id ? useDocs(({ items, resources }) => items[id]?.displayName ?? 'Oops', [id]) : 'Unknown';
+  const itemInfo =
+    id &&
+    useDocs(({ items }) => {
+      const item = items[id];
+      return { imgSrc: item?.iconPath ?? null, itemName: item?.displayName ?? 'Unknown' };
+    });
 
   return (
     <>
-      <Handle type='target' position={Position.Left} />
-      <div className='flex flex-col items-center justify-center'>
-        <p className='text-center font-semibold'>{itemName}</p>
-        <p className='text-center'>{speed} / min</p>
-      </div>
-      <Handle type='source' position={Position.Right} />
+      <Handle type='target' className='bg-[#B7A9DA]' position={Position.Left} />
+      {
+        <div className='flex flex-col items-center justify-center rounded-md bg-[#B7A9DA] px-4 py-1 text-primary-content'>
+          {itemInfo ? (
+            <>
+              {itemInfo.imgSrc && <img src={itemInfo.imgSrc} alt={itemInfo.itemName} className='h-8 w-8' />}
+              <p className='text-center font-semibold'>{itemInfo.itemName}</p>
+              <p className='text-center'>{speed} / min</p>
+            </>
+          ) : (
+            <p className='text-center font-semibold'>Unset</p>
+          )}
+        </div>
+      }
+      <Handle type='source' className='bg-[#B7A9DA]' position={Position.Right} />
     </>
   );
 }
@@ -64,7 +78,7 @@ export function ResourceNode({ data }: NodeProps) {
           <p className='text-center font-semibold'>Unset</p>
         )}
       </div>
-      <Handle className='bg-[#76BABF]' type='source' position={Position.Right} />
+      <Handle type='source' className='bg-[#76BABF]' position={Position.Right} />
     </>
   );
 }
