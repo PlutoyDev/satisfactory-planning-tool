@@ -80,7 +80,6 @@ export type Item = {
   productOf?: string[];
   ingredientOf?: string[];
   iconPath: string | null;
-  smallIconBase64: string | null;
 };
 
 export function parseItem(itemArr: Record<string, unknown>[]) {
