@@ -223,7 +223,7 @@ function ExternalNode(props: ExternalNodeProps) {
   // It doesn't have the same functionality, mainly use to render in side panel and drag into the graph
   const { nodeEl, divElProps } = props;
   return (
-    <div className='user-select-none pointer-events-[all] absolute origin-center' {...divElProps}>
+    <div className='absolute origin-center select-none' {...divElProps}>
       {nodeEl}
     </div>
   );
