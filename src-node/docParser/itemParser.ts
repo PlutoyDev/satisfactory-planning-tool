@@ -1,5 +1,6 @@
 import { copyFile, mkdir } from 'fs/promises';
 import { readFileSync, statSync } from 'fs';
+import sharp from 'sharp';
 
 const eStackSize = {
   SS_ONE: 1,
@@ -41,31 +42,22 @@ const mapperObject = {
       ({ RF_SOLID: 'solid', RF_LIQUID: 'liquid', RF_GAS: 'gas' }[i] ?? null),
   },
   mPersistentBigIcon: {
-    into: 'iconPath',
+    into: "iconPath",
     transform: (i: string) => {
-      const path = i.substring(28).split('.')[0];
+      const path = i.substring(28).split(".")[0];
       const originalPath = `res/extracted/FactoryGame/${path}.png`;
       try {
         statSync(originalPath, { throwIfNoEntry: true });
-        const newName = path.split('/').pop()?.replace('IconDesc_', '');
-        const newPath = `public/satisfactory/icons/${newName}.png`;
-        copyFile(originalPath, newPath);
-        return newPath.substring(6);
+        const newName = path.split("/").pop()?.replace("IconDesc_", "").split("_").slice(0, -1).join("_");
+        // const newPath = `public/satisfactory/icons/${newName}.png`;
+        //   copyFile(originalPath, newPath);
+        //   return newPath.substring(6);
+        // Use sharp to convert to webp
+        const newPath = `public/satisfactory/icons/${newName}.webp`;
+        sharp(originalPath).resize({ width: 64, height: 64 }).webp({ force: true, effort: 6 }).toFile(newPath);
+        return newPath.substring(6); // Remove "public" from the path
       } catch (e) {
         console.log("File doesn't exist", originalPath);
-        return null;
-      }
-    },
-  },
-  mSmallIcon: {
-    into: 'smallIconBase64',
-    transform: (i: string) => {
-      if (!i.includes('_256')) return null;
-      const path = i.substring(28).split('.')[0].replace('_256', '_64');
-      const fullPath = `res/extracted/FactoryGame/${path}.png`;
-      try {
-        return readFileSync(fullPath, { encoding: 'base64' });
-      } catch (e) {
         return null;
       }
     },
