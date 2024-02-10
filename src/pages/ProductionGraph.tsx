@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import React, { useRef } from 'react';
 import { useRoute, useLocation } from 'wouter';
 import { useState, useCallback } from 'react';
 import ReactFlow, {
@@ -220,9 +220,9 @@ export function ProductionGraph() {
                 }}
               >
                 {isFullscreen ? (
-                  <ArrowsPointingInIcon className='w-5 h-5' />
+                  <ArrowsPointingInIcon className='w-5 h-5 text-base-content' />
                 ) : (
-                  <ArrowsPointingOutIcon className='w-5 h-5' />
+                  <ArrowsPointingOutIcon className='w-5 h-5 text-base-content' />
                 )}
               </button>
             </div>
@@ -230,6 +230,31 @@ export function ProductionGraph() {
         </Panel>
         <Background />
       </ReactFlow>
+    </div>
+  );
+}
+
+// function RightSidePanel() {
+//   return (
+//     <div className='absolute z-[5] m-[15px] right-0 origin-center translate-y-1/2 pointer-events-none'></div>
+//   );
+// }
+
+interface ExternalNodeProps {
+  nodeEl: React.ReactElement;
+  divElProps: React.HTMLProps<HTMLDivElement>;
+}
+
+function ExternalNode(props: ExternalNodeProps) {
+  // Based on reactflow internal node component as it was not exported, so I had to make my own.
+  // It doesn't have the same functionality, mainly use to render in side panel and drag into the graph
+  const { nodeEl, divElProps } = props;
+  return (
+    <div
+      className='absolute user-select-none pointer-events-[all] origin-center'
+      {...divElProps}
+    >
+      {nodeEl}
     </div>
   );
 }
