@@ -15,10 +15,7 @@ import ReactFlow, {
 } from 'reactflow';
 import * as idb from 'idb';
 import useLegacyEffect from '../hooks/useLegacyEffect';
-import {
-  ArrowsPointingOutIcon,
-  ArrowsPointingInIcon,
-} from '@heroicons/react/24/outline';
+import { ArrowsPointingOutIcon, ArrowsPointingInIcon } from '@heroicons/react/24/outline';
 
 export const routePattern = '/production-lines/:id' as const;
 
@@ -27,10 +24,7 @@ type DbNode = Pick<Node, 'id' | 'type' | 'data' | 'position'> & {
   prodLineId: string;
 };
 
-type DbEdge = Pick<
-  Edge,
-  'id' | 'type' | 'data' | 'source' | 'target' | 'sourceHandle' | 'targetHandle'
-> & {
+type DbEdge = Pick<Edge, 'id' | 'type' | 'data' | 'source' | 'target' | 'sourceHandle' | 'targetHandle'> & {
   prodLineId: string;
 };
 
@@ -54,14 +48,8 @@ function openProdLineDb() {
   // Open the nodes and edges db and return them
   return idb.openDB<IProductionLineDb>('prodLines', 1, {
     upgrade(db) {
-      db.createObjectStore('nodes', { keyPath: 'id' }).createIndex(
-        'prodLineId',
-        'prodLineId'
-      );
-      db.createObjectStore('edges', { keyPath: 'id' }).createIndex(
-        'prodLineId',
-        'prodLineId'
-      );
+      db.createObjectStore('nodes', { keyPath: 'id' }).createIndex('prodLineId', 'prodLineId');
+      db.createObjectStore('edges', { keyPath: 'id' }).createIndex('prodLineId', 'prodLineId');
     },
   });
 }
@@ -76,20 +64,11 @@ export function ProductionGraph() {
   const [, params] = useRoute(routePattern);
   const [, navigate] = useLocation();
 
-  const onNodesChange: OnNodesChange = useCallback(
-    changes => setNodes(nds => applyNodeChanges(changes, nds)),
-    []
-  );
+  const onNodesChange: OnNodesChange = useCallback(changes => setNodes(nds => applyNodeChanges(changes, nds)), []);
 
-  const onEdgesChange: OnEdgesChange = useCallback(
-    changes => setEdges(eds => applyEdgeChanges(changes, eds)),
-    []
-  );
+  const onEdgesChange: OnEdgesChange = useCallback(changes => setEdges(eds => applyEdgeChanges(changes, eds)), []);
 
-  const onConnect: OnConnect = useCallback(
-    connection => setEdges(edges => addEdge(connection, edges)),
-    []
-  );
+  const onConnect: OnConnect = useCallback(connection => setEdges(edges => addEdge(connection, edges)), []);
 
   const loadProductionLine = useCallback(async (prodLineId: string) => {
     const db = await openProdLineDb();
@@ -102,51 +81,45 @@ export function ProductionGraph() {
     db.close();
   }, []);
 
-  const saveProductionLine = useCallback(
-    async (prodLineId: string, nodes: Node[], edges: Edge[]) => {
-      const db = await openProdLineDb();
-      const nodeTx = db.transaction('nodes', 'readwrite');
-      const edgeTx = db.transaction('edges', 'readwrite');
-      const res = await Promise.allSettled([
-        ...nodes.map(({ id, type, data, position }) =>
-          nodeTx.store.put({
-            id,
-            type,
-            data,
-            position,
-            prodLineId,
-          })
-        ),
-        ...edges.map(
-          ({ id, type, data, source, target, sourceHandle, targetHandle }) =>
-            edgeTx.store.put({
-              id,
-              type,
-              data,
-              source,
-              target,
-              sourceHandle,
-              targetHandle,
-              prodLineId,
-            })
-        ),
-        nodeTx.done,
-        edgeTx.done,
-      ]);
-      if (res.some(r => r.status === 'rejected')) {
-        // TODO: Show error to user
-        console.error(
-          'Failed to save production line',
-          res
-            .filter(r => r.status === 'rejected')
-            .map(r => (r as PromiseRejectedResult).reason)
-        );
-        // TODO: Rollback changes
-      }
-      db.close();
-    },
-    []
-  );
+  const saveProductionLine = useCallback(async (prodLineId: string, nodes: Node[], edges: Edge[]) => {
+    const db = await openProdLineDb();
+    const nodeTx = db.transaction('nodes', 'readwrite');
+    const edgeTx = db.transaction('edges', 'readwrite');
+    const res = await Promise.allSettled([
+      ...nodes.map(({ id, type, data, position }) =>
+        nodeTx.store.put({
+          id,
+          type,
+          data,
+          position,
+          prodLineId,
+        }),
+      ),
+      ...edges.map(({ id, type, data, source, target, sourceHandle, targetHandle }) =>
+        edgeTx.store.put({
+          id,
+          type,
+          data,
+          source,
+          target,
+          sourceHandle,
+          targetHandle,
+          prodLineId,
+        }),
+      ),
+      nodeTx.done,
+      edgeTx.done,
+    ]);
+    if (res.some(r => r.status === 'rejected')) {
+      // TODO: Show error to user
+      console.error(
+        'Failed to save production line',
+        res.filter(r => r.status === 'rejected').map(r => (r as PromiseRejectedResult).reason),
+      );
+      // TODO: Rollback changes
+    }
+    db.close();
+  }, []);
 
   useLegacyEffect(() => {
     //Loading
@@ -172,11 +145,11 @@ export function ProductionGraph() {
   }, [params?.id, loadProductionLine]);
 
   if (loading) {
-    return <div className='skeleton w-full h-full' />;
+    return <div className='skeleton h-full w-full' />;
   }
 
   return (
-    <div className='w-full h-full bg-base-300' ref={elRef}>
+    <div className='h-full w-full bg-base-300' ref={elRef}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -188,10 +161,10 @@ export function ProductionGraph() {
         proOptions={{ hideAttribution: false }}
       >
         <Panel position='top-center'>
-          <div className='flex items-center space-x-2 bg-base-100 p-1 shadow-lg rounded-sm'>
+          <div className='flex items-center space-x-2 rounded-sm bg-base-100 p-1 shadow-lg'>
             <div className='tooltip tooltip-bottom' data-tip='Save'>
               <button
-                className='btn btn-sm btn-square btn-ghost'
+                className='btn btn-square btn-ghost btn-sm'
                 type='button'
                 onClick={() => {
                   if (params?.id) {
@@ -206,7 +179,7 @@ export function ProductionGraph() {
             </div>
             <div className='tooltip tooltip-bottom' data-tip='Fullscreen'>
               <button
-                className='btn btn-sm btn-square btn-ghost'
+                className='btn btn-square btn-ghost btn-sm'
                 type='button'
                 onClick={() => {
                   if (elRef.current) {
@@ -220,9 +193,9 @@ export function ProductionGraph() {
                 }}
               >
                 {isFullscreen ? (
-                  <ArrowsPointingInIcon className='w-5 h-5 text-base-content' />
+                  <ArrowsPointingInIcon className='h-5 w-5 text-base-content' />
                 ) : (
-                  <ArrowsPointingOutIcon className='w-5 h-5 text-base-content' />
+                  <ArrowsPointingOutIcon className='h-5 w-5 text-base-content' />
                 )}
               </button>
             </div>
@@ -250,10 +223,7 @@ function ExternalNode(props: ExternalNodeProps) {
   // It doesn't have the same functionality, mainly use to render in side panel and drag into the graph
   const { nodeEl, divElProps } = props;
   return (
-    <div
-      className='absolute user-select-none pointer-events-[all] origin-center'
-      {...divElProps}
-    >
+    <div className='user-select-none pointer-events-[all] absolute origin-center' {...divElProps}>
       {nodeEl}
     </div>
   );

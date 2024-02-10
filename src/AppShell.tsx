@@ -1,13 +1,7 @@
 // Main Entry Point for the App
 import { Route, Link, useRoute, useLocation } from 'wouter';
 import { useCallback, useEffect, useState } from 'react';
-import {
-  HomeIcon,
-  ChevronDoubleRightIcon,
-  ChevronDoubleLeftIcon,
-  PlusIcon,
-  QuestionMarkCircleIcon,
-} from '@heroicons/react/24/outline';
+import { HomeIcon, ChevronDoubleRightIcon, ChevronDoubleLeftIcon, PlusIcon, QuestionMarkCircleIcon } from '@heroicons/react/24/outline';
 import Home from './pages/Home';
 import ProductionGraph, { routePattern } from './pages/ProductionGraph';
 import AppLogo from './components/AppLogo';
@@ -29,28 +23,20 @@ export function AppShell() {
 
   const createProdLine = useCallback(() => {
     const id = nanoid(8);
-    setProdInfos(cur => [
-      ...cur,
-      { id, title: 'Unnamed Production Line', icon: '???' },
-    ]);
+    setProdInfos(cur => [...cur, { id, title: 'Unnamed Production Line', icon: '???' }]);
     navigate(`/production-lines/${id}`);
   }, [navigate]);
 
-  const updateProdLine = useCallback(
-    (id: string, changes: Partial<Omit<ProductionLineInfo, 'id'>>) => {
-      setProdInfos(cur =>
-        cur.map(info => (info.id === id ? { ...info, ...changes } : info))
-      );
-    },
-    []
-  );
+  const updateProdLine = useCallback((id: string, changes: Partial<Omit<ProductionLineInfo, 'id'>>) => {
+    setProdInfos(cur => cur.map(info => (info.id === id ? { ...info, ...changes } : info)));
+  }, []);
 
   const deleteProdLine = useCallback(
     (id: string) => {
       setProdInfos(cur => cur.filter(info => info.id !== id));
       navigate('/');
     },
-    [navigate]
+    [navigate],
   );
 
   useEffect(() => {
@@ -60,7 +46,7 @@ export function AppShell() {
 
   return (
     <div>
-      <div className='absolute z-0 w-full h-full pt-2 pl-20 pr-4 p'>
+      <div className='p absolute z-0 h-full w-full pl-20 pr-4 pt-2'>
         <Route path='/'>
           <Home />
         </Route>
@@ -73,13 +59,7 @@ export function AppShell() {
   );
 }
 
-function Sidebar({
-  prodInfos,
-  createFn,
-}: {
-  prodInfos: ProductionLineInfo[];
-  createFn: () => void;
-}) {
+function Sidebar({ prodInfos, createFn }: { prodInfos: ProductionLineInfo[]; createFn: () => void }) {
   const [expanded, setExpanded] = useState(false);
 
   const [isAtHome] = useRoute('/');
@@ -89,20 +69,17 @@ function Sidebar({
       {/* Overlay */}
       {expanded && (
         <div
-          className='fixed inset-0 z-0 bg-black bg-opacity-50 cursor-pointer'
+          className='fixed inset-0 z-0 cursor-pointer bg-black bg-opacity-50'
           onClick={() => setExpanded(false)}
           onKeyDown={() => setExpanded(false)}
         >
           {/* Retract Button */}
-          <ChevronDoubleLeftIcon
-            className='absolute w-8 h-8 top-4 right-4 text-primary'
-            onClick={() => setExpanded(false)}
-          />
+          <ChevronDoubleLeftIcon className='absolute right-4 top-4 h-8 w-8 text-primary' onClick={() => setExpanded(false)} />
         </div>
       )}
       {/* Sidebar */}
-      <aside className='relative z-50 h-full bg-clip-border w-min'>
-        <nav className='min-h-full flex flex-col items-center py-4 bg-base-100 text-base-content min-w-16'>
+      <aside className='relative z-50 h-full w-min bg-clip-border'>
+        <nav className='flex min-h-full min-w-16 flex-col items-center bg-base-100 py-4 text-base-content'>
           <div className='h-14'>
             {
               // Maintain same height when expanded, expanded shows app logo, collapsed shows expand button
@@ -119,18 +96,10 @@ function Sidebar({
                   <SidebarButton
                     title='Expand'
                     onclick={() => setExpanded(true)}
-                    icon={
-                      <ChevronDoubleRightIcon className='w-8 h-8 text-primary' />
-                    }
+                    icon={<ChevronDoubleRightIcon className='h-8 w-8 text-primary' />}
                     expanded={expanded}
                   />
-                  <SidebarLink
-                    key='home'
-                    title='Home'
-                    href='/'
-                    icon={<HomeIcon className='w-8 h-8 text-primary' />}
-                    expanded={expanded}
-                  />
+                  <SidebarLink key='home' title='Home' href='/' icon={<HomeIcon className='h-8 w-8 text-primary' />} expanded={expanded} />
                 </>
               )
             }
@@ -143,9 +112,9 @@ function Sidebar({
               href={`/production-lines/${info.id}`}
               icon={
                 info.icon === '???' ? (
-                  <p className='font-extrabold w-8 h-8 text-2xl'>?</p>
+                  <p className='h-8 w-8 text-2xl font-extrabold'>?</p>
                 ) : (
-                  <img src={info.icon} alt={info.title} />
+                  <img src={info.icon} alt={info.title} height={24} width={24} />
                 )
               }
               expanded={expanded}
@@ -155,7 +124,7 @@ function Sidebar({
             key='create'
             title='Create new'
             onclick={createFn}
-            icon={<PlusIcon className='inline-block w-8 h-8 text-primary' />}
+            icon={<PlusIcon className='inline-block h-8 w-8 text-primary' />}
             expanded={expanded}
           />
         </nav>
@@ -195,19 +164,11 @@ function SidebarButton(props: SidebarButtonProps) {
 
   return (
     <div className='tooltip tooltip-right' data-tip={title}>
-      <button
-        className='btn btn-ghost btn-sm flex-nowrap'
-        onClick={onclick}
-        type='button'
-      >
+      <button className='btn btn-ghost btn-sm flex-nowrap' onClick={onclick} type='button'>
         <span className='icon'>{icon}</span>
         {
           // Only show the title if the sidebar is expanded
-          expanded && (
-            <span className='text-ellipsis max-w-60 whitespace-nowrap overflow-hidden'>
-              {title}
-            </span>
-          )
+          expanded && <span className='max-w-60 overflow-hidden text-ellipsis whitespace-nowrap'>{title}</span>
         }
       </button>
     </div>
