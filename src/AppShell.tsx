@@ -1,6 +1,6 @@
 // Main Entry Point for the App
 import { Route, Link, useRoute, useLocation } from 'wouter';
-import { useCallback, useEffect, useState } from 'react';
+import { Suspense, useCallback, useEffect, useState } from 'react';
 import { HomeIcon, ChevronDoubleRightIcon, ChevronDoubleLeftIcon, PlusIcon, QuestionMarkCircleIcon } from '@heroicons/react/24/outline';
 import Home from './pages/Home';
 import ProductionGraph, { routePattern } from './pages/ProductionGraph';
@@ -51,7 +51,9 @@ export function AppShell() {
           <Home />
         </Route>
         <Route path={routePattern}>
-          <ProductionGraph />
+          <Suspense fallback={<div>Loading...</div>}>
+            <ProductionGraph />
+          </Suspense>
         </Route>
       </div>
       <Sidebar prodInfos={prodInfos} createFn={createProdLine} />
