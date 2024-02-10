@@ -2,7 +2,7 @@
 import { use, type ComponentType } from 'react';
 import type { NodeProps, Node } from 'reactflow';
 import { Handle, Position } from 'reactflow';
-import useDocs from '../hooks/useDocs';
+import useDocs, { Item } from '../hooks/useDocs';
 
 // function NodeSuspenseWrapper<Props extends {}>(Node: ComponentType<Props>) {
 //   return function WrappedNode(props: Props) {
@@ -21,8 +21,8 @@ export interface ItemNodeData {
   speed?: number;
 }
 
-export function ItemNode({ data }: NodeProps) {
-  const { id, speed } = data as ItemNodeData;
+export function ItemNode({ data }: NodeProps<ItemNodeData>) {
+  const { id, speed } = data;
   const itemInfo =
     id &&
     useDocs(({ items }) => {
@@ -56,8 +56,8 @@ export interface ResourceNodeData {
   speed?: number;
 }
 
-export function ResourceNode({ data }: NodeProps) {
-  const { id, speed } = data as ResourceNodeData;
+export function ResourceNode({ data }: NodeProps<ResourceNodeData>) {
+  const { id, speed } = data;
   const rInfo =
     id &&
     useDocs(({ resources }) => {
@@ -83,14 +83,56 @@ export function ResourceNode({ data }: NodeProps) {
   );
 }
 
+export interface ProductionMachineNodeData {
+  recipeId?: string;
+  machineId?: string;
+  clockspeeds?: number;
+  qty?: number;
+}
+
+export function ProductionMachineNode({ data }: NodeProps<ProductionMachineNodeData>) {
+  const { recipeId, machineId, clockspeeds = 1, qty } = data;
+  const recipeInfo = recipeId ? useDocs(({ recipes }) => recipes[recipeId], [recipeId]) : undefined;
+  const machineInfo =
+    machineId || recipeInfo?.producedIn
+      ? useDocs(
+          ({ productionMachines }) => productionMachines[(machineId ?? recipeInfo?.producedIn) as string],
+          [machineId, recipeInfo?.producedIn],
+        )
+      : undefined;
+
+  return (
+    <>
+      <Handle type='target' className='bg-[#F6AD55]' position={Position.Left} />
+      <div className='flex flex-col items-center justify-center rounded-md bg-[#F6AD55] px-4 py-1 text-primary-content'>
+        {recipeInfo ? (
+          <p className='text-center font-semibold'>{recipeInfo.displayName}</p>
+        ) : (
+          <p className='text-center font-semibold'>Unset</p>
+        )}
+        {machineInfo ? (
+          <p className='text-center'>
+            {qty}x {clockspeeds * 100}% {machineInfo.displayName}
+          </p>
+        ) : (
+          <p className='text-center font-semibold'>Unset</p>
+        )}
+      </div>
+      <Handle type='source' className='bg-[#F6AD55]' position={Position.Right} />
+    </>
+  );
+}
+
 export const nodeTypes = {
   item: ItemNode,
   resource: ResourceNode,
+  productionMachine: ProductionMachineNode,
 } satisfies Record<string, ComponentType<NodeProps>>;
 
 type CustomNodeDataMap = {
   item: ItemNodeData;
   resource: ResourceNodeData;
+  productionMachine: ProductionMachineNodeData;
 };
 
 export type FactoryNode = Node<CustomNodeDataMap[keyof CustomNodeDataMap], keyof CustomNodeDataMap>;

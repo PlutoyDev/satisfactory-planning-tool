@@ -12,12 +12,42 @@ export const screwFactoryNode: FactoryNode[] = [
     },
   },
   {
+    id: 'ingots',
+    type: 'productionMachine',
+    position: { x: 230, y: 16 },
+    data: {
+      recipeId: 'Recipe_IngotIron_C',
+      clockspeeds: 1,
+      qty: 1,
+    },
+  },
+  {
+    id: 'rods',
+    type: 'productionMachine',
+    position: { x: 400, y: 16 },
+    data: {
+      recipeId: 'Recipe_IronRod_C',
+      clockspeeds: 1,
+      qty: 2,
+    },
+  },
+  {
+    id: 'screws',
+    type: 'productionMachine',
+    position: { x: 600, y: 16 },
+    data: {
+      recipeId: 'Recipe_Screw_C',
+      clockspeeds: 1,
+      qty: 3,
+    },
+  },
+  {
     id: 'final',
     type: 'item',
-    position: { x: 300, y: 0 },
+    position: { x: 800, y: 0 },
     data: {
       id: 'Desc_IronScrew_C',
-      speed: 60,
+      speed: 120,
     },
   },
 ];
