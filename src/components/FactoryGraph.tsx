@@ -4,16 +4,6 @@ import type { NodeProps, Node } from 'reactflow';
 import { Handle, Position } from 'reactflow';
 import { useDocs } from '../context/DocsContext';
 
-// function NodeSuspenseWrapper<Props extends {}>(Node: ComponentType<Props>) {
-//   return function WrappedNode(props: Props) {
-//     return (
-//       <Suspense fallback={<div>Loading...</div>}>
-//         <Node {...props} />
-//       </Suspense>
-//     );
-//   };
-// }
-
 export interface ItemNodeData {
   /** Item id */
   id?: string;
@@ -135,6 +125,6 @@ type CustomNodeDataMap = {
   productionMachine: ProductionMachineNodeData;
 };
 
-export type FactoryNode = Node<CustomNodeDataMap[keyof CustomNodeDataMap], keyof CustomNodeDataMap>;
+export type FactoryNodeProperties = Node<CustomNodeDataMap[keyof CustomNodeDataMap], keyof CustomNodeDataMap>;
 
 export default nodeTypes;

@@ -17,7 +17,7 @@ import ReactFlow, {
 import useLegacyEffect from '../hooks/useLegacyEffect';
 import { ArrowsPointingOutIcon, ArrowsPointingInIcon } from '@heroicons/react/24/outline';
 import { screwFactoryNode } from '../misc/screwTest';
-import nodeTypes from '../components/CustomNodes';
+import nodeTypes from '../components/FactoryGraph';
 import { loadProductionLine, saveProductionLine } from '../lib/ProductionLine';
 
 export const routePattern = '/production-lines/:id' as const;

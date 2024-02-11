@@ -1,7 +1,7 @@
 // Production Line for screw factory
 import type { Node, Edge } from 'reactflow';
-import type { FactoryNode } from '../components/CustomNodes';
-export const screwFactoryNode: FactoryNode[] = [
+import type { FactoryNodeProperties } from '../components/FactoryGraph';
+export const screwFactoryNode: FactoryNodeProperties[] = [
   {
     id: '1',
     type: 'resource',
