@@ -5,25 +5,31 @@ export const screwFactoryNode: FactoryNodeProperties[] = [
     id: '1',
     type: 'resource',
     data: { resourceId: 'Desc_OreIron_C', speed: 30 },
-    position: { x: -164, y: 5 },
+    position: { x: -164, y: 3 },
   },
   {
     id: 'final',
     type: 'item',
     data: { itemId: 'Desc_IronScrew_C', speed: 120 },
-    position: { x: 1160, y: 0 },
+    position: { x: 1228, y: 5 },
   },
   {
     id: 'ingots',
     type: 'recipe',
     data: { recipeId: 'Recipe_IngotIron_C', qty: 1 },
-    position: { x: -5, y: 20 },
+    position: { x: -5, y: 19 },
   },
   {
     id: 'merge',
     type: 'logistic',
     data: { type: 'merger' },
     position: { x: 719, y: 17 },
+  },
+  {
+    id: 'merge2',
+    type: 'logistic',
+    data: { type: 'merger' },
+    position: { x: 1084, y: 17 },
   },
   {
     id: 'rods1',
@@ -47,7 +53,7 @@ export const screwFactoryNode: FactoryNodeProperties[] = [
     id: 'screws2',
     type: 'recipe',
     data: { recipeId: 'Recipe_Screw_C' },
-    position: { x: 861, y: 20 },
+    position: { x: 861, y: 21 },
   },
   {
     id: 'screws3',
@@ -72,11 +78,5 @@ export const screwFactoryNode: FactoryNodeProperties[] = [
     type: 'logistic',
     data: { type: 'splitter' },
     position: { x: 586, y: 100 },
-  },
-  {
-    id: 'merge2',
-    type: 'logistic',
-    data: { type: 'merger' },
-    position: { x: 1040, y: 15 },
   },
 ];
