@@ -7,7 +7,7 @@ export const screwFactoryNode: FactoryNodeProperties[] = [
     type: 'resource',
     position: { x: 100, y: 0 },
     data: {
-      id: 'Desc_OreIron_C',
+      resourceId: 'Desc_OreIron_C',
       speed: 30,
     },
   },
@@ -46,7 +46,7 @@ export const screwFactoryNode: FactoryNodeProperties[] = [
     type: 'item',
     position: { x: 800, y: 0 },
     data: {
-      id: 'Desc_IronScrew_C',
+      itemId: 'Desc_IronScrew_C',
       speed: 120,
     },
   },

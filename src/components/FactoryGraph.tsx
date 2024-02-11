@@ -6,17 +6,17 @@ import { useDocs } from '../context/DocsContext';
 
 export interface ItemNodeData {
   /** Item id */
-  id?: string;
+  itemId?: string;
   /** Production speed in item per minute */
   speed?: number;
 }
 
 export function ItemNode({ data }: NodeProps<ItemNodeData>) {
-  const { id, speed } = data;
+  const { itemId, speed } = data;
   const itemInfo =
-    id &&
+    itemId &&
     useDocs(({ items }) => {
-      const item = items[id];
+      const item = items[itemId];
       return { imgSrc: item?.iconPath ?? null, itemName: item?.displayName ?? 'Unknown' };
     });
 
@@ -42,16 +42,16 @@ export function ItemNode({ data }: NodeProps<ItemNodeData>) {
 }
 
 export interface ResourceNodeData {
-  id?: string;
+  resourceId?: string;
   speed?: number;
 }
 
 export function ResourceNode({ data }: NodeProps<ResourceNodeData>) {
-  const { id, speed } = data;
+  const { resourceId, speed } = data;
   const rInfo =
-    id &&
+    resourceId &&
     useDocs(({ resources }) => {
-      const resource = resources[id];
+      const resource = resources[resourceId];
       return { imgSrc: resource?.iconPath ?? null, itemName: resource?.displayName ?? 'Unknown' };
     });
 
