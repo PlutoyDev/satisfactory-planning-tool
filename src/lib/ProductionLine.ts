@@ -52,9 +52,9 @@ async function loadFromDb(id: string, db?: Awaited<ReturnType<typeof openProdLin
   }
 
   const [nodes, edges, viewport] = await Promise.all([
-    db.getAllFromIndex('nodes', 'prodLineId', id),
-    db.getAllFromIndex('edges', 'prodLineId', id),
-    db.get('viewport', id),
+    db.getAllFromIndex('nodes', 'prodLineId', id).then(nodes => nodes.map(({ prodLineId, ...node }) => node)),
+    db.getAllFromIndex('edges', 'prodLineId', id).then(edges => edges.map(({ prodLineId, ...edge }) => edge)),
+    db.get('viewport', id).then(v => (v ? { zoom: v.zoom, x: v.x, y: v.y } : undefined)),
   ]);
 
   if (shouldClose) {
