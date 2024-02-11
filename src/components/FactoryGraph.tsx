@@ -1,15 +1,8 @@
 // Reactflow custom nodes
-import { type ComponentType } from 'react';
+import type { ComponentType } from 'react';
 import type { NodeProps, Node } from 'reactflow';
 import { Handle, Position } from 'reactflow';
 import { useDocs } from '../context/DocsContext';
-
-export const defaultNodeColor = {
-  resource: '#76BABF',
-  item: '#B7A9DA',
-  recipe: '#F6AD55',
-  logistics: '#71DA8F',
-} as const;
 
 export interface ResourceNodeData {
   resourceId?: string;
@@ -148,26 +141,26 @@ export function LogisticNode({ data }: NodeProps<LogisticNodeData>) {
   if (!isSplitter) {
     return (
       <>
-        <Handle id='left' type='target' position={Position.Left} style={{ backgroundColor: defaultNodeColor.logistics, top: '25%' }} />
-        <Handle id='center' type='target' position={Position.Left} style={{ backgroundColor: defaultNodeColor.logistics, top: '50%' }} />
-        <Handle id='right' type='target' position={Position.Left} style={{ backgroundColor: defaultNodeColor.logistics, top: '75%' }} />
+        <Handle id='left' type='target' position={Position.Left} style={{ backgroundColor: defaultNodeColor.logistic, top: '25%' }} />
+        <Handle id='center' type='target' position={Position.Left} style={{ backgroundColor: defaultNodeColor.logistic, top: '50%' }} />
+        <Handle id='right' type='target' position={Position.Left} style={{ backgroundColor: defaultNodeColor.logistic, top: '75%' }} />
         <div
           className='min-h-16 gap-1 rounded-md px-4 py-1 pt-5 text-primary-content'
-          style={{ backgroundColor: defaultNodeColor.logistics }}
+          style={{ backgroundColor: defaultNodeColor.logistic }}
         >
           <p className='row-span-3 h-min text-center font-semibold'>{logisticNames[type]}</p>
         </div>
-        <Handle type='source' position={Position.Right} style={{ backgroundColor: defaultNodeColor.logistics }} />
+        <Handle type='source' position={Position.Right} style={{ backgroundColor: defaultNodeColor.logistic }} />
       </>
     );
   }
 
   return (
     <>
-      <Handle type='target' position={Position.Left} style={{ backgroundColor: defaultNodeColor.logistics }} />
+      <Handle type='target' position={Position.Left} style={{ backgroundColor: defaultNodeColor.logistic }} />
       <div
         className='grid min-h-16 auto-cols-fr grid-cols-1 grid-rows-3 place-items-center gap-1 rounded-md px-4 py-1 text-primary-content'
-        style={{ backgroundColor: defaultNodeColor.logistics }}
+        style={{ backgroundColor: defaultNodeColor.logistic }}
       >
         <p className='row-span-3 h-min text-center font-semibold'>{logisticNames[type]}</p>
         {isSplitter && type !== 'splitter' && (
@@ -178,28 +171,38 @@ export function LogisticNode({ data }: NodeProps<LogisticNodeData>) {
           </>
         )}
       </div>
-      <Handle id='left' type='source' position={Position.Right} style={{ backgroundColor: defaultNodeColor.logistics, top: '25%' }} />
-      <Handle id='center' type='source' position={Position.Right} style={{ backgroundColor: defaultNodeColor.logistics, top: '50%' }} />
-      <Handle id='right' type='source' position={Position.Right} style={{ backgroundColor: defaultNodeColor.logistics, top: '75%' }} />
+      <Handle id='left' type='source' position={Position.Right} style={{ backgroundColor: defaultNodeColor.logistic, top: '25%' }} />
+      <Handle id='center' type='source' position={Position.Right} style={{ backgroundColor: defaultNodeColor.logistic, top: '50%' }} />
+      <Handle id='right' type='source' position={Position.Right} style={{ backgroundColor: defaultNodeColor.logistic, top: '75%' }} />
     </>
   );
 }
 
+// Used by ReactFlow to render custom nodes
 export const nodeTypes = {
   item: ItemNode,
   resource: ResourceNode,
   recipe: RecipeNode,
   logistic: LogisticNode,
-} satisfies Record<string, ComponentType<NodeProps>>;
+} as const;
+
+export type NodeTypeKeys = keyof typeof nodeTypes;
+export const nodeTypeKeys = Object.keys(nodeTypes) as NodeTypeKeys[];
+
+export const defaultNodeColor = {
+  resource: '#76BABF',
+  item: '#B7A9DA',
+  recipe: '#F6AD55',
+  logistic: '#71DA8F',
+} satisfies Record<NodeTypeKeys, string>;
 
 type CustomNodeDataMap = {
-  item: ItemNodeData;
-  resource: ResourceNodeData;
-  recipe: RecipeNodeData;
-  logistic: LogisticNodeData;
+  [K in NodeTypeKeys]: (typeof nodeTypes)[K] extends ComponentType<NodeProps<infer D>> ? D : never;
 };
 
-export type FactoryNodeData = CustomNodeDataMap[keyof CustomNodeDataMap];
-export type FactoryNodeProperties = Node<CustomNodeDataMap[keyof CustomNodeDataMap], keyof CustomNodeDataMap>;
+type CustomNodePropertiesMap = {
+  [K in NodeTypeKeys]: Node<CustomNodeDataMap[K], K>;
+};
 
-export default nodeTypes;
+export type FactoryNodeData = CustomNodeDataMap[NodeTypeKeys];
+export type FactoryNodeProperties = CustomNodePropertiesMap[NodeTypeKeys];
