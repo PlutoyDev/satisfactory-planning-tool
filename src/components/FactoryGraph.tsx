@@ -123,7 +123,7 @@ export function RecipeNode({ data }: NodeProps<RecipeNodeData>) {
 }
 
 export interface LogisticNodeData {
-  type: 'splitter' | 'splitterSmart' | 'splitterProg' | 'merger';
+  type?: 'splitter' | 'splitterSmart' | 'splitterProg' | 'merger';
   rules?: Record<'left' | 'center' | 'right', 'any' | 'none' | 'anyUndefined' | 'overflow' | `item: ${string}` | `resource: ${string}`>;
 }
 
@@ -136,7 +136,7 @@ const logisticNames = {
 
 export function LogisticNode({ id, data }: NodeProps<LogisticNodeData>) {
   const updateNodeInternals = useUpdateNodeInternals();
-  const { type, rules } = data;
+  const { type = 'splitter', rules } = data;
   const isSplitter = type.startsWith('splitter');
   const prevIsSplitter = useRef(isSplitter);
 

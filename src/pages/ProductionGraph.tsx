@@ -1,14 +1,15 @@
-import { useMemo, useRef } from 'react';
+import { useRef } from 'react';
 import { useRoute, useLocation } from 'wouter';
 import { useState, useCallback } from 'react';
-import ReactFlow, { Panel, Background, addEdge, applyEdgeChanges, applyNodeChanges, useReactFlow, BackgroundVariant } from 'reactflow';
-import type { Node, Edge, OnConnect, OnNodesChange, OnEdgesChange, NodeProps } from 'reactflow';
+import { ReactFlow, Panel, Background, addEdge, applyEdgeChanges, applyNodeChanges, useReactFlow } from 'reactflow';
+import type { Node, Edge, OnConnect, OnNodesChange, OnEdgesChange } from 'reactflow';
 import useLegacyEffect from '../hooks/useLegacyEffect';
 import { ArrowsPointingOutIcon, ArrowsPointingInIcon } from '@heroicons/react/24/outline';
 import { screwFactoryNode } from '../misc/screwTest';
-import nodeTypes, { FactoryNodeData } from '../components/FactoryGraph';
+import { nodeTypes, nodeTypeKeys, defaultNodeColor, type NodeTypeKeys, type FactoryNodeData } from '../components/FactoryGraph';
 import { loadProductionLine, saveProductionLine } from '../lib/ProductionLine';
 import { useDocs } from '../context/DocsContext';
+import { nanoid } from 'nanoid';
 
 export const routePattern = '/production-lines/:id' as const;
 
@@ -29,6 +30,17 @@ export function ProductionGraph() {
   const onNodesChange: OnNodesChange = useCallback(changes => setNodes(nds => applyNodeChanges(changes, nds)), []);
   const onEdgesChange: OnEdgesChange = useCallback(changes => setEdges(eds => applyEdgeChanges(changes, eds)), []);
   const onConnect: OnConnect = useCallback(connection => setEdges(edges => addEdge(connection, edges)), []);
+  const onDrop = useCallback(
+    (event: React.DragEvent<HTMLDivElement>) => {
+      event.preventDefault();
+      const type = event.dataTransfer.getData('application/reactflow') as NodeTypeKeys;
+      if (!type) return;
+      const pos = rfInstance.screenToFlowPosition({ x: event.clientX, y: event.clientY });
+      setNodes(nds => [...nds, { id: nanoid(), type, position: pos, data: {} }]);
+      console.log('Dropped', type, pos);
+    },
+    [rfInstance],
+  );
 
   useLegacyEffect(() => {
     loadProductionLine({ prodLineId: params?.id }).then(({ nodes, edges, viewport }) => {
@@ -56,6 +68,10 @@ export function ProductionGraph() {
         nodeTypes={nodeTypes}
         // TODO: Make a better attribution, then hide this (It doesn't look good with this background)
         proOptions={{ hideAttribution: false }}
+        onDrop={onDrop}
+        onDragOver={e => (e.preventDefault(), (e.dataTransfer.dropEffect = 'move'))}
+        //Keyboard Props
+        deleteKeyCode={['Delete', 'Backspace']}
       >
         <Panel position='top-center'>
           <div className='flex items-center space-x-2 rounded-sm bg-base-100 p-1 shadow-lg'>
@@ -112,24 +128,34 @@ export function ProductionGraph() {
   );
 }
 
+const nodeNames = {
+  resource: 'Resource',
+  item: 'Item',
+  recipe: 'Recipe',
+  logistic: 'Logistic',
+} as const satisfies Record<NodeTypeKeys, string>;
+
 function NodePickerPanel() {
   return (
     <Panel position='top-right'>
       <div className='w-48 rounded-md bg-base-100 p-2 pt-0 shadow-lg first:rounded-t-md last:rounded-b-md [&>*]:w-full '>
         <h3 className='whitespace-nowrap text-lg font-bold'>Node List</h3>
         <div className='divider !my-0' />
-        {/* Body */}
         <div className='grid grid-cols-2 place-items-center gap-2 text-center font-semibold text-primary-content'>
-          <div className='h-full w-full cursor-pointer rounded-md bg-[#76BABF] px-2 py-1' draggable>
-            Resource
-          </div>
-          <div className='h-full w-full cursor-pointer rounded-md bg-[#B7A9DA] px-2 py-1'>Item</div>
-          <div className='h-full w-full cursor-pointer rounded-md bg-[#F6AD55] px-2 py-1' draggable>
-            Recipe
-          </div>
-          <div className='h-full w-full cursor-pointer rounded-md bg-[#71DA8F] px-2 py-1' draggable>
-            Logistic
-          </div>
+          {nodeTypeKeys.map(key => (
+            <div
+              key={key}
+              style={{ backgroundColor: defaultNodeColor[key] }}
+              className='w-full cursor-pointer rounded-md px-2 py-1'
+              onDragStart={e => {
+                e.dataTransfer.setData('application/reactflow', key);
+                e.dataTransfer.effectAllowed = 'move';
+              }}
+              draggable
+            >
+              {nodeNames[key]}
+            </div>
+          ))}
         </div>
       </div>
     </Panel>
