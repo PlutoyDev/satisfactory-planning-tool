@@ -1,4 +1,4 @@
-import React, { use, useMemo, useRef } from 'react';
+import React, { useMemo, useRef } from 'react';
 import { useRoute, useLocation } from 'wouter';
 import { useState, useCallback } from 'react';
 import ReactFlow, {
@@ -12,8 +12,8 @@ import ReactFlow, {
   type OnConnect,
   type OnNodesChange,
   type OnEdgesChange,
+  type ReactFlowInstance,
 } from 'reactflow';
-import * as idb from 'idb';
 import useLegacyEffect from '../hooks/useLegacyEffect';
 import { ArrowsPointingOutIcon, ArrowsPointingInIcon } from '@heroicons/react/24/outline';
 import { screwFactoryNode } from '../misc/screwTest';
@@ -26,8 +26,10 @@ export function ProductionGraph() {
   const [, navigate] = useLocation();
   const [, params] = useRoute(routePattern);
 
+  const [loading, setLoading] = useState(true);
   const [nodes, setNodes] = useState<Node[]>([]);
   const [edges, setEdges] = useState<Edge[]>([]);
+  const rfInstance = useRef<ReactFlowInstance | null>(null);
 
   const elRef = useRef<HTMLDivElement | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -37,20 +39,21 @@ export function ProductionGraph() {
   const onEdgesChange: OnEdgesChange = useCallback(changes => setEdges(eds => applyEdgeChanges(changes, eds)), []);
   const onConnect: OnConnect = useCallback(connection => setEdges(edges => addEdge(connection, edges)), []);
 
-  // const loader = useMemo(async () => {
-  //   const { nodes, edges } = await loadProductionLine({ prodLineId: params?.id });
-  //   setNodes(nodes);
-  //   setEdges(edges);
-  // }, [params?.id]);
-
-  const { edges: loadedEdges, nodes: loadedNodes } = use(useMemo(() => loadProductionLine({ prodLineId: params?.id }), [params?.id]));
-
   useLegacyEffect(() => {
-    if (loadedNodes && loadedEdges) {
-      setNodes(loadedNodes);
-      setEdges(loadedEdges);
-    }
-  }, [loadedNodes, loadedEdges]);
+    loadProductionLine({ prodLineId: params?.id }).then(({ nodes, edges, viewport }) => {
+      setLoading(false);
+      setNodes(nodes);
+      setEdges(edges);
+      if (viewport) {
+        console.log('RfInstance', !!rfInstance.current);
+        rfInstance.current?.setViewport(viewport);
+      }
+    });
+  }, [params?.id]);
+
+  if (loading) {
+    return <div className='skeleton h-full w-full' />;
+  }
 
   return (
     <div className='h-full w-full bg-base-300' ref={elRef}>
@@ -60,8 +63,8 @@ export function ProductionGraph() {
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
-        fitView
         nodeTypes={nodeTypes}
+        onInit={instance => (rfInstance.current = instance)}
         // TODO: Make a better attribution, then hide this (It doesn't look good with this background)
         proOptions={{ hideAttribution: false }}
       >
@@ -72,7 +75,7 @@ export function ProductionGraph() {
                 className='btn btn-square btn-ghost btn-sm'
                 type='button'
                 onClick={() => {
-                  saveProductionLine({ prodLineId: params?.id, nodes, edges });
+                  saveProductionLine({ prodLineId: params?.id, nodes, edges, viewport: rfInstance.current?.getViewport()! });
                 }}
               >
                 💾

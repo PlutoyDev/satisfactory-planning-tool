@@ -1,12 +1,13 @@
 // Main Entry Point for the App
 import { Route, Link, useRoute, useLocation } from 'wouter';
-import { Suspense, useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { HomeIcon, ChevronDoubleRightIcon, ChevronDoubleLeftIcon, PlusIcon, QuestionMarkCircleIcon } from '@heroicons/react/24/outline';
 import Home from './pages/Home';
 import ProductionGraph, { routePattern } from './pages/ProductionGraph';
 import AppLogo from './components/AppLogo';
 import { nanoid } from 'nanoid';
 import { ErrorBoundary, FallbackProps } from 'react-error-boundary';
+import { DocsProvider } from './context/DocsContext';
 
 interface ProductionLineInfo {
   id: string;
@@ -56,19 +57,19 @@ export function AppShell() {
 
   return (
     <div>
-      <div className='p absolute z-0 h-full w-full pl-20 pr-4 pt-2'>
-        <Route path='/'>
-          <Home />
-        </Route>
-        <Route path={routePattern}>
-          <ErrorBoundary FallbackComponent={ErrorFallback}>
-            <Suspense fallback={<div className='skeleton h-full w-full' />}>
+      <ErrorBoundary FallbackComponent={ErrorFallback}>
+        <DocsProvider LoaderComponent={<div className='skeleton h-screen w-screen' />}>
+          <div className='p absolute z-0 h-full w-full pl-20 pr-4 pt-2'>
+            <Route path='/'>
+              <Home />
+            </Route>
+            <Route path={routePattern}>
               <ProductionGraph />
-            </Suspense>
-          </ErrorBoundary>
-        </Route>
-      </div>
-      <Sidebar prodInfos={prodInfos} createFn={createProdLine} />
+            </Route>
+          </div>
+          <Sidebar prodInfos={prodInfos} createFn={createProdLine} />
+        </DocsProvider>
+      </ErrorBoundary>
     </div>
   );
 }

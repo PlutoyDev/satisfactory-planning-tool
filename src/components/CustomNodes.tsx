@@ -1,8 +1,8 @@
 // Reactflow custom nodes
-import { use, type ComponentType } from 'react';
+import { type ComponentType } from 'react';
 import type { NodeProps, Node } from 'reactflow';
 import { Handle, Position } from 'reactflow';
-import useDocs, { Item } from '../hooks/useDocs';
+import { useDocs } from '../context/DocsContext';
 
 // function NodeSuspenseWrapper<Props extends {}>(Node: ComponentType<Props>) {
 //   return function WrappedNode(props: Props) {

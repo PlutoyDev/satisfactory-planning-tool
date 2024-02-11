@@ -1,7 +1,6 @@
-import { use } from 'react';
-import { Edge, Node } from 'reactflow';
 import * as idb from 'idb';
 import { nanoid } from 'nanoid';
+import type { Edge, Node, Viewport } from 'reactflow';
 
 // Indexdb for storing production line data
 type DbNode = Pick<Node, 'id' | 'type' | 'data' | 'position'> & {
@@ -23,9 +22,14 @@ interface IProductionLineDb extends idb.DBSchema {
     value: DbEdge;
     indexes: { prodLineId: string };
   };
+  viewport: {
+    key: string;
+    value: Viewport & { prodLineId: string };
+    indexes: { prodLineId: string };
+  };
 }
 
-interface UseProductionLineArgs {
+interface LoadProductionLineArgs {
   prodLineId?: string;
 }
 
@@ -35,27 +39,39 @@ function openProdLineDb() {
     upgrade(db) {
       db.createObjectStore('nodes', { keyPath: 'id' }).createIndex('prodLineId', 'prodLineId');
       db.createObjectStore('edges', { keyPath: 'id' }).createIndex('prodLineId', 'prodLineId');
+      db.createObjectStore('viewport', { keyPath: 'prodLineId' });
     },
   });
 }
 
 async function loadFromDb(id: string) {
   const db = await openProdLineDb();
-  const [nodes, edges] = await Promise.all([db.getAllFromIndex('nodes', 'prodLineId', id), db.getAllFromIndex('edges', 'prodLineId', id)]);
+  const [nodes, edges, viewport] = await Promise.all([
+    db.getAllFromIndex('nodes', 'prodLineId', id),
+    db.getAllFromIndex('edges', 'prodLineId', id),
+    db.get('viewport', id),
+  ]);
 
   db.close();
-  return { nodes, edges };
+  return { nodes, edges, viewport };
 }
 
-export function loadProductionLine({ prodLineId }: UseProductionLineArgs) {
+export function loadProductionLine({ prodLineId }: LoadProductionLineArgs) {
   if (!prodLineId) {
-    return Promise.resolve({ nodes: [], edges: [] });
+    return Promise.resolve({ nodes: [], edges: [], viewport: { zoom: 1, x: 0, y: 0 } });
   }
 
   return loadFromDb(prodLineId);
 }
 
-async function saveToDb(param: { prodLineId?: string; nodes: Node[]; edges: Edge[] }) {
+export interface SaveProductionLineArgs {
+  prodLineId?: string;
+  nodes: Node[];
+  edges: Edge[];
+  viewport: Viewport;
+}
+
+async function saveToDb(param: SaveProductionLineArgs) {
   const prodLineId = param.prodLineId ?? (console.warn('No id provided for saving'), nanoid());
   const { nodes, edges } = param;
   const db = await openProdLineDb();
@@ -77,10 +93,11 @@ async function saveToDb(param: { prodLineId?: string; nodes: Node[]; edges: Edge
     ),
     nodeTx.done,
     edgeTx.done,
+    db.put('viewport', { ...param.viewport, prodLineId }),
   ]);
   db.close();
 }
 
-export function saveProductionLine({ prodLineId, nodes, edges }: { prodLineId?: string; nodes: Node[]; edges: Edge[] }) {
-  use(saveToDb({ prodLineId, nodes, edges }));
+export function saveProductionLine(args: SaveProductionLineArgs) {
+  return saveToDb(args);
 }
