@@ -145,9 +145,26 @@ export function LogisticNode({ data }: NodeProps<LogisticNodeData>) {
   const { type, rules } = data;
   const isSplitter = type.startsWith('splitter');
 
+  if (!isSplitter) {
+    return (
+      <>
+        <Handle id='left' type='target' position={Position.Left} style={{ backgroundColor: defaultNodeColor.logistics, top: '25%' }} />
+        <Handle id='center' type='target' position={Position.Left} style={{ backgroundColor: defaultNodeColor.logistics, top: '50%' }} />
+        <Handle id='right' type='target' position={Position.Left} style={{ backgroundColor: defaultNodeColor.logistics, top: '75%' }} />
+        <div
+          className='min-h-16 gap-1 rounded-md px-4 py-1 pt-5 text-primary-content'
+          style={{ backgroundColor: defaultNodeColor.logistics }}
+        >
+          <p className='row-span-3 h-min text-center font-semibold'>{logisticNames[type]}</p>
+        </div>
+        <Handle type='source' position={Position.Right} style={{ backgroundColor: defaultNodeColor.logistics }} />
+      </>
+    );
+  }
+
   return (
     <>
-      <Handle type={isSplitter ? 'target' : 'source'} position={Position.Left} style={{ backgroundColor: defaultNodeColor.logistics }} />
+      <Handle type='target' position={Position.Left} style={{ backgroundColor: defaultNodeColor.logistics }} />
       <div
         className='grid min-h-16 auto-cols-fr grid-cols-1 grid-rows-3 place-items-center gap-1 rounded-md px-4 py-1 text-primary-content'
         style={{ backgroundColor: defaultNodeColor.logistics }}
@@ -161,24 +178,9 @@ export function LogisticNode({ data }: NodeProps<LogisticNodeData>) {
           </>
         )}
       </div>
-      <Handle
-        id='left'
-        type={isSplitter ? 'source' : 'target'}
-        position={Position.Right}
-        style={{ backgroundColor: defaultNodeColor.logistics, top: '25%' }}
-      />
-      <Handle
-        id='center'
-        type={isSplitter ? 'source' : 'target'}
-        position={Position.Right}
-        style={{ backgroundColor: defaultNodeColor.logistics, top: '50%' }}
-      />
-      <Handle
-        id='right'
-        type={isSplitter ? 'source' : 'target'}
-        position={Position.Right}
-        style={{ backgroundColor: defaultNodeColor.logistics, top: '75%' }}
-      />
+      <Handle id='left' type='source' position={Position.Right} style={{ backgroundColor: defaultNodeColor.logistics, top: '25%' }} />
+      <Handle id='center' type='source' position={Position.Right} style={{ backgroundColor: defaultNodeColor.logistics, top: '50%' }} />
+      <Handle id='right' type='source' position={Position.Right} style={{ backgroundColor: defaultNodeColor.logistics, top: '75%' }} />
     </>
   );
 }
