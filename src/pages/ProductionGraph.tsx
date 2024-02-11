@@ -1,7 +1,7 @@
 import { useMemo, useRef } from 'react';
 import { useRoute, useLocation } from 'wouter';
 import { useState, useCallback } from 'react';
-import ReactFlow, { Panel, Background, addEdge, applyEdgeChanges, applyNodeChanges, useReactFlow } from 'reactflow';
+import ReactFlow, { Panel, Background, addEdge, applyEdgeChanges, applyNodeChanges, useReactFlow, BackgroundVariant } from 'reactflow';
 import type { Node, Edge, OnConnect, OnNodesChange, OnEdgesChange, NodeProps } from 'reactflow';
 import useLegacyEffect from '../hooks/useLegacyEffect';
 import { ArrowsPointingOutIcon, ArrowsPointingInIcon } from '@heroicons/react/24/outline';
@@ -54,7 +54,6 @@ export function ProductionGraph() {
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         nodeTypes={nodeTypes}
-        onInit={instance => (rfInstance.current = instance)}
         // TODO: Make a better attribution, then hide this (It doesn't look good with this background)
         proOptions={{ hideAttribution: false }}
       >
@@ -106,31 +105,34 @@ export function ProductionGraph() {
             </div>
           </div>
         </Panel>
+        <NodePickerPanel />
         <Background />
       </ReactFlow>
     </div>
   );
 }
 
-// function RightSidePanel() {
-//   return (
-//     <div className='absolute z-[5] m-[15px] right-0 origin-center translate-y-1/2 pointer-events-none'></div>
-//   );
-// }
-
-interface ExternalNodeProps {
-  nodeEl: React.ReactElement;
-  divElProps: React.HTMLProps<HTMLDivElement>;
-}
-
-function ExternalNode(props: ExternalNodeProps) {
-  // Based on reactflow internal node component as it was not exported, so I had to make my own.
-  // It doesn't have the same functionality, mainly use to render in side panel and drag into the graph
-  const { nodeEl, divElProps } = props;
+function NodePickerPanel() {
   return (
-    <div className='absolute origin-center select-none' {...divElProps}>
-      {nodeEl}
-    </div>
+    <Panel position='top-right'>
+      <div className='w-48 rounded-md bg-base-100 p-2 pt-0 shadow-lg first:rounded-t-md last:rounded-b-md [&>*]:w-full '>
+        <h3 className='whitespace-nowrap text-lg font-bold'>Node List</h3>
+        <div className='divider !my-0' />
+        {/* Body */}
+        <div className='grid grid-cols-2 place-items-center gap-2 text-center font-semibold text-primary-content'>
+          <div className='h-full w-full cursor-pointer rounded-md bg-[#76BABF] px-2 py-1' draggable>
+            Resource
+          </div>
+          <div className='h-full w-full cursor-pointer rounded-md bg-[#B7A9DA] px-2 py-1'>Item</div>
+          <div className='h-full w-full cursor-pointer rounded-md bg-[#F6AD55] px-2 py-1' draggable>
+            Recipe
+          </div>
+          <div className='h-full w-full cursor-pointer rounded-md bg-[#71DA8F] px-2 py-1' draggable>
+            Logistic
+          </div>
+        </div>
+      </div>
+    </Panel>
   );
 }
 

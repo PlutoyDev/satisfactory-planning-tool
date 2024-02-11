@@ -11,19 +11,12 @@ const productionMachines = [
   'SmelterMk1_C',
   'ConstructorMk1_C',
   'HadronCollider_C',
-  'WaterPump_C',
-  'OilPump_C',
-  'MinerMk2_C',
-  'MinerMk3_C',
-  'MinerMk1_C',
 ];
 
-export const productionMachineAsDescClassNames = productionMachines.map(
-  machine => 'Desc_' + machine
-);
-const productionMachineAsBuildClassNames = productionMachines.map(
-  machine => 'Build_' + machine
-);
+const resourceExtractorMachines = ['WaterPump_C', 'OilPump_C', 'MinerMk2_C', 'MinerMk3_C', 'MinerMk1_C'];
+
+export const productionMachineAsDescClassNames = productionMachines.map(machine => 'Desc_' + machine);
+const productionMachineAsBuildClassNames = productionMachines.map(machine => 'Build_' + machine);
 
 export const productionMachineRecipe: Record<string, Recipe> = {};
 
@@ -51,40 +44,38 @@ export type ProductionMachine = {
   ingredients: { itemKey: string; amount: number }[];
 };
 
-export function parseProductionMachine(
-  buildableArr: Record<string, unknown>[]
-) {
-  return buildableArr.reduce((acc, buildable) => {
-    const key = buildable['ClassName'] as string;
-    if (!key) return acc;
-    // I only want to parse for production machines
-    if (!productionMachineAsBuildClassNames.includes(key)) return acc;
+export function parseProductionMachine(buildableArr: Record<string, unknown>[]) {
+  return buildableArr.reduce(
+    (acc, buildable) => {
+      const key = buildable['ClassName'] as string;
+      if (!key) return acc;
+      // I only want to parse for production machines
+      if (!productionMachineAsBuildClassNames.includes(key)) return acc;
 
-    const descClassName = key.replace('Build_', 'Desc_');
+      const descClassName = key.replace('Build_', 'Desc_');
 
-    const parsedBuildable = {
-      ingredients: productionMachineRecipe[descClassName].ingredients,
-    } as ProductionMachine;
+      const parsedBuildable = {
+        ingredients: productionMachineRecipe[descClassName].ingredients,
+      } as ProductionMachine;
 
-    for (const [key, value] of Object.entries(buildable)) {
-      const mapper = mapperObject[key as keyof typeof mapperObject];
-      if (!mapper) {
-        continue;
+      for (const [key, value] of Object.entries(buildable)) {
+        const mapper = mapperObject[key as keyof typeof mapperObject];
+        if (!mapper) {
+          continue;
+        }
+
+        if ('transform' in mapper) {
+          // @ts-ignore
+          parsedBuildable[mapper.into] = mapper.transform(value as string);
+        } else {
+          // @ts-ignore
+          parsedBuildable[mapper.into] = value;
+        }
       }
 
-      if ('transform' in mapper) {
-        // @ts-ignore
-        parsedBuildable[mapper.into] = mapper.transform(value as string);
-      } else {
-        // @ts-ignore
-        parsedBuildable[mapper.into] = value;
-      }
-    }
-
-    acc[key] = parsedBuildable;
-    return acc;
-  }, {} as Record<string, ProductionMachine>) as Record<
-    string,
-    ProductionMachine
-  >;
+      acc[key] = parsedBuildable;
+      return acc;
+    },
+    {} as Record<string, ProductionMachine>,
+  ) as Record<string, ProductionMachine>;
 }
