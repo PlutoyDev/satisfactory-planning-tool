@@ -94,13 +94,16 @@ export function DocsProvider({ LoaderComponent, children }: DocsProviderProps) {
   );
 }
 
+export function useDocs(): Docs;
+export function useDocs<R>(selector: (docs: Docs) => R, deps?: React.DependencyList): R;
+
 /**
  * Hook to get the docs from the context
  * @param selector selector function that takes the docs and returns the value you want
  * @param dependencies dependencies for the selector function
  * @returns
  */
-export function useDocs(selector?: (docs: Docs) => any, deps?: React.DependencyList) {
+export function useDocs<R>(selector?: (docs: Docs) => R, deps?: React.DependencyList) {
   const { docs, loading } = useContext(DocsContext);
 
   if (loading) {
