@@ -6,11 +6,21 @@ import Home from './pages/Home';
 import ProductionGraph, { routePattern } from './pages/ProductionGraph';
 import AppLogo from './components/AppLogo';
 import { nanoid } from 'nanoid';
+import { ErrorBoundary, FallbackProps } from 'react-error-boundary';
 
 interface ProductionLineInfo {
   id: string;
   title: string;
   icon: string;
+}
+
+function ErrorFallback({ error }: FallbackProps) {
+  return (
+    <div role='alert' className='flex h-full flex-col items-center justify-center bg-error'>
+      <QuestionMarkCircleIcon className='h-14 w-14 text-error-content' />
+      <p className='mt-4 text-center text-lg'>{error.message}</p>
+    </div>
+  );
 }
 
 export function AppShell() {
@@ -51,9 +61,11 @@ export function AppShell() {
           <Home />
         </Route>
         <Route path={routePattern}>
-          <Suspense fallback={<div className='skeleton h-full w-full' />}>
-            <ProductionGraph />
-          </Suspense>
+          <ErrorBoundary FallbackComponent={ErrorFallback}>
+            <Suspense fallback={<div className='skeleton h-full w-full' />}>
+              <ProductionGraph />
+            </Suspense>
+          </ErrorBoundary>
         </Route>
       </div>
       <Sidebar prodInfos={prodInfos} createFn={createProdLine} />
