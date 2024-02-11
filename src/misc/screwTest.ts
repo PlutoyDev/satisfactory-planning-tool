@@ -13,7 +13,7 @@ export const screwFactoryNode: FactoryNodeProperties[] = [
   },
   {
     id: 'ingots',
-    type: 'productionMachine',
+    type: 'recipe',
     position: { x: 230, y: 16 },
     data: {
       recipeId: 'Recipe_IngotIron_C',
@@ -22,18 +22,26 @@ export const screwFactoryNode: FactoryNodeProperties[] = [
     },
   },
   {
-    id: 'rods',
-    type: 'productionMachine',
+    id: 'rods1',
+    type: 'recipe',
     position: { x: 400, y: 16 },
     data: {
       recipeId: 'Recipe_IronRod_C',
       clockspeeds: 1,
-      qty: 2,
+    },
+  },
+  {
+    id: 'rods2',
+    type: 'recipe',
+    position: { x: 400, y: 116 },
+    data: {
+      recipeId: 'Recipe_IronRod_C',
+      clockspeeds: 1,
     },
   },
   {
     id: 'screws',
-    type: 'productionMachine',
+    type: 'recipe',
     position: { x: 600, y: 16 },
     data: {
       recipeId: 'Recipe_Screw_C',
@@ -48,6 +56,14 @@ export const screwFactoryNode: FactoryNodeProperties[] = [
     data: {
       itemId: 'Desc_IronScrew_C',
       speed: 120,
+    },
+  },
+  {
+    id: 'split1',
+    type: 'logistic',
+    position: { x: 200, y: -400 },
+    data: {
+      type: 'splitter',
     },
   },
 ];

@@ -4,6 +4,48 @@ import type { NodeProps, Node } from 'reactflow';
 import { Handle, Position } from 'reactflow';
 import { useDocs } from '../context/DocsContext';
 
+export const defaultNodeColor = {
+  resource: '#76BABF',
+  item: '#B7A9DA',
+  recipe: '#F6AD55',
+  logistics: '#71DA8F',
+} as const;
+
+export interface ResourceNodeData {
+  resourceId?: string;
+  speed?: number;
+}
+
+export function ResourceNode({ data }: NodeProps<ResourceNodeData>) {
+  const { resourceId, speed } = data;
+  const rInfo =
+    resourceId &&
+    useDocs(({ resources }) => {
+      const resource = resources[resourceId];
+      return { imgSrc: resource?.iconPath ?? null, itemName: resource?.displayName ?? 'Unknown' };
+    });
+
+  return (
+    <>
+      <div
+        className='flex flex-col items-center justify-center rounded-md px-4 py-1 text-primary-content'
+        style={{ backgroundColor: defaultNodeColor.resource }}
+      >
+        {rInfo ? (
+          <>
+            {rInfo.imgSrc && <img src={rInfo.imgSrc} alt={rInfo.itemName} className='h-8 w-8' />}
+            <p className='text-center font-semibold'>{rInfo.itemName}</p>
+            <p className='text-center'>{speed} / min</p>
+          </>
+        ) : (
+          <p className='text-center font-semibold'>Unset</p>
+        )}
+      </div>
+      <Handle type='source' style={{ backgroundColor: defaultNodeColor.resource }} position={Position.Right} />
+    </>
+  );
+}
+
 export interface ItemNodeData {
   /** Item id */
   itemId?: string;
@@ -22,9 +64,12 @@ export function ItemNode({ data }: NodeProps<ItemNodeData>) {
 
   return (
     <>
-      <Handle type='target' className='bg-[#B7A9DA]' position={Position.Left} />
+      <Handle type='target' position={Position.Left} style={{ backgroundColor: defaultNodeColor.item }} />
       {
-        <div className='flex flex-col items-center justify-center rounded-md bg-[#B7A9DA] px-4 py-1 text-primary-content'>
+        <div
+          className='flex flex-col items-center justify-center rounded-md px-4 py-1 text-primary-content'
+          style={{ backgroundColor: defaultNodeColor.item }}
+        >
           {itemInfo ? (
             <>
               {itemInfo.imgSrc && <img src={itemInfo.imgSrc} alt={itemInfo.itemName} className='h-8 w-8' />}
@@ -36,51 +81,19 @@ export function ItemNode({ data }: NodeProps<ItemNodeData>) {
           )}
         </div>
       }
-      <Handle type='source' className='bg-[#B7A9DA]' position={Position.Right} />
+      <Handle type='source' position={Position.Right} style={{ backgroundColor: defaultNodeColor.item }} />
     </>
   );
 }
 
-export interface ResourceNodeData {
-  resourceId?: string;
-  speed?: number;
-}
-
-export function ResourceNode({ data }: NodeProps<ResourceNodeData>) {
-  const { resourceId, speed } = data;
-  const rInfo =
-    resourceId &&
-    useDocs(({ resources }) => {
-      const resource = resources[resourceId];
-      return { imgSrc: resource?.iconPath ?? null, itemName: resource?.displayName ?? 'Unknown' };
-    });
-
-  return (
-    <>
-      <div className='flex flex-col items-center justify-center rounded-md bg-[#76BABF] px-4 py-1 text-primary-content'>
-        {rInfo ? (
-          <>
-            {rInfo.imgSrc && <img src={rInfo.imgSrc} alt={rInfo.itemName} className='h-8 w-8' />}
-            <p className='text-center font-semibold'>{rInfo.itemName}</p>
-            <p className='text-center'>{speed} / min</p>
-          </>
-        ) : (
-          <p className='text-center font-semibold'>Unset</p>
-        )}
-      </div>
-      <Handle type='source' className='bg-[#76BABF]' position={Position.Right} />
-    </>
-  );
-}
-
-export interface ProductionMachineNodeData {
+export interface RecipeNodeData {
   recipeId?: string;
   machineId?: string;
   clockspeeds?: number;
   qty?: number;
 }
 
-export function ProductionMachineNode({ data }: NodeProps<ProductionMachineNodeData>) {
+export function RecipeNode({ data }: NodeProps<RecipeNodeData>) {
   const { recipeId, machineId, clockspeeds = 1, qty } = data;
   const recipeInfo = recipeId ? useDocs(({ recipes }) => recipes[recipeId], [recipeId]) : undefined;
   const machineInfo =
@@ -93,8 +106,11 @@ export function ProductionMachineNode({ data }: NodeProps<ProductionMachineNodeD
 
   return (
     <>
-      <Handle type='target' className='bg-[#F6AD55]' position={Position.Left} />
-      <div className='flex flex-col items-center justify-center rounded-md bg-[#F6AD55] px-4 py-1 text-primary-content'>
+      <Handle type='target' position={Position.Left} style={{ backgroundColor: defaultNodeColor.recipe }} />
+      <div
+        className='flex flex-col items-center justify-center rounded-md px-4 py-1 text-primary-content'
+        style={{ backgroundColor: defaultNodeColor.recipe }}
+      >
         {recipeInfo ? (
           <p className='text-center font-semibold'>{recipeInfo.displayName}</p>
         ) : (
@@ -102,13 +118,67 @@ export function ProductionMachineNode({ data }: NodeProps<ProductionMachineNodeD
         )}
         {machineInfo ? (
           <p className='text-center'>
-            {qty}x {clockspeeds * 100}% {machineInfo.displayName}
+            {qty ? `${qty}x` : ''} {clockspeeds * 100}% {machineInfo.displayName}
           </p>
         ) : (
           <p className='text-center font-semibold'>Unset</p>
         )}
       </div>
-      <Handle type='source' className='bg-[#F6AD55]' position={Position.Right} />
+      <Handle type='source' position={Position.Right} style={{ backgroundColor: defaultNodeColor.recipe }} />
+    </>
+  );
+}
+
+export interface LogisticNodeData {
+  type: 'splitter' | 'splitterSmart' | 'splitterProg' | 'merger';
+  rules?: Record<'left' | 'center' | 'right', 'any' | 'none' | 'anyUndefined' | 'overflow' | `item: ${string}` | `resource: ${string}`>;
+}
+
+const logisticNames = {
+  splitter: 'Splitter',
+  splitterSmart: 'Smart Splitter',
+  splitterProg: 'Programmable Splitter',
+  merger: 'Merger',
+} as const;
+
+export function LogisticNode({ data }: NodeProps<LogisticNodeData>) {
+  const { type, rules } = data;
+  const isSplitter = type.startsWith('splitter');
+
+  return (
+    <>
+      <Handle type={isSplitter ? 'target' : 'source'} position={Position.Left} style={{ backgroundColor: defaultNodeColor.logistics }} />
+      <div
+        className='grid min-h-16 auto-cols-fr grid-cols-1 grid-rows-3 place-items-center gap-1 rounded-md px-4 py-1 text-primary-content'
+        style={{ backgroundColor: defaultNodeColor.logistics }}
+      >
+        <p className='row-span-3 h-min text-center font-semibold'>{logisticNames[type]}</p>
+        {isSplitter && type !== 'splitter' && (
+          <>
+            <p className='text-center'>Left</p>
+            <p className='text-center'>Center</p>
+            <p className='text-center'>Right</p>
+          </>
+        )}
+      </div>
+      <Handle
+        id='left'
+        type={isSplitter ? 'source' : 'target'}
+        position={Position.Right}
+        style={{ backgroundColor: defaultNodeColor.logistics, top: '25%' }}
+      />
+      <Handle
+        id='center'
+        type={isSplitter ? 'source' : 'target'}
+        position={Position.Right}
+        style={{ backgroundColor: defaultNodeColor.logistics, top: '50%' }}
+      />
+      <Handle
+        id='right'
+        type={isSplitter ? 'source' : 'target'}
+        position={Position.Right}
+        style={{ backgroundColor: defaultNodeColor.logistics, top: '75%' }}
+      />
     </>
   );
 }
@@ -116,13 +186,15 @@ export function ProductionMachineNode({ data }: NodeProps<ProductionMachineNodeD
 export const nodeTypes = {
   item: ItemNode,
   resource: ResourceNode,
-  productionMachine: ProductionMachineNode,
+  recipe: RecipeNode,
+  logistic: LogisticNode,
 } satisfies Record<string, ComponentType<NodeProps>>;
 
 type CustomNodeDataMap = {
   item: ItemNodeData;
   resource: ResourceNodeData;
-  productionMachine: ProductionMachineNodeData;
+  recipe: RecipeNodeData;
+  logistic: LogisticNodeData;
 };
 
 export type FactoryNodeData = CustomNodeDataMap[keyof CustomNodeDataMap];
