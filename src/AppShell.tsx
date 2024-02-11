@@ -8,6 +8,7 @@ import AppLogo from './components/AppLogo';
 import { nanoid } from 'nanoid';
 import { ErrorBoundary, FallbackProps } from 'react-error-boundary';
 import { DocsProvider } from './context/DocsContext';
+import { ReactFlowProvider } from 'reactflow';
 
 interface ProductionLineInfo {
   id: string;
@@ -64,7 +65,9 @@ export function AppShell() {
               <Home />
             </Route>
             <Route path={routePattern}>
-              <ProductionGraph />
+              <ReactFlowProvider>
+                <ProductionGraph />
+              </ReactFlowProvider>
             </Route>
           </div>
           <Sidebar prodInfos={prodInfos} createFn={createProdLine} />

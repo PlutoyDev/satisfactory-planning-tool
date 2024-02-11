@@ -1,35 +1,26 @@
-import React, { useMemo, useRef } from 'react';
+import { useMemo, useRef } from 'react';
 import { useRoute, useLocation } from 'wouter';
 import { useState, useCallback } from 'react';
-import ReactFlow, {
-  Panel,
-  Background,
-  addEdge,
-  applyEdgeChanges,
-  applyNodeChanges,
-  type Node,
-  type Edge,
-  type OnConnect,
-  type OnNodesChange,
-  type OnEdgesChange,
-  type ReactFlowInstance,
-} from 'reactflow';
+import ReactFlow, { Panel, Background, addEdge, applyEdgeChanges, applyNodeChanges, useReactFlow } from 'reactflow';
+import type { Node, Edge, OnConnect, OnNodesChange, OnEdgesChange, NodeProps } from 'reactflow';
 import useLegacyEffect from '../hooks/useLegacyEffect';
 import { ArrowsPointingOutIcon, ArrowsPointingInIcon } from '@heroicons/react/24/outline';
 import { screwFactoryNode } from '../misc/screwTest';
-import nodeTypes from '../components/FactoryGraph';
+import nodeTypes, { FactoryNodeData } from '../components/FactoryGraph';
 import { loadProductionLine, saveProductionLine } from '../lib/ProductionLine';
+import { useDocs } from '../context/DocsContext';
 
 export const routePattern = '/production-lines/:id' as const;
 
 export function ProductionGraph() {
   const [, navigate] = useLocation();
   const [, params] = useRoute(routePattern);
+  const docs = useDocs();
 
   const [loading, setLoading] = useState(true);
   const [nodes, setNodes] = useState<Node[]>([]);
   const [edges, setEdges] = useState<Edge[]>([]);
-  const rfInstance = useRef<ReactFlowInstance | null>(null);
+  const rfInstance = useReactFlow<FactoryNodeData>();
 
   const elRef = useRef<HTMLDivElement | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -45,11 +36,10 @@ export function ProductionGraph() {
       setNodes(nodes);
       setEdges(edges);
       if (viewport) {
-        console.log('RfInstance', !!rfInstance.current);
-        rfInstance.current?.setViewport(viewport);
+        rfInstance.setViewport(viewport, { duration: 300 });
       }
     });
-  }, [params?.id]);
+  }, [params?.id, rfInstance]);
 
   if (loading) {
     return <div className='skeleton h-full w-full' />;
@@ -75,7 +65,7 @@ export function ProductionGraph() {
                 className='btn btn-square btn-ghost btn-sm'
                 type='button'
                 onClick={() => {
-                  saveProductionLine({ prodLineId: params?.id, nodes, edges, viewport: rfInstance.current?.getViewport()! });
+                  saveProductionLine({ prodLineId: params?.id, nodes, edges, viewport: rfInstance.getViewport()! });
                 }}
               >
                 💾

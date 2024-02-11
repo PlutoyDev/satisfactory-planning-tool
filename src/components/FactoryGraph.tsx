@@ -125,6 +125,7 @@ type CustomNodeDataMap = {
   productionMachine: ProductionMachineNodeData;
 };
 
+export type FactoryNodeData = CustomNodeDataMap[keyof CustomNodeDataMap];
 export type FactoryNodeProperties = Node<CustomNodeDataMap[keyof CustomNodeDataMap], keyof CustomNodeDataMap>;
 
 export default nodeTypes;
