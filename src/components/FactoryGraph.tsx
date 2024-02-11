@@ -1,7 +1,7 @@
 // Reactflow custom nodes
-import type { ComponentType } from 'react';
+import { useRef, useEffect, type ComponentType } from 'react';
 import type { NodeProps, Node } from 'reactflow';
-import { Handle, Position } from 'reactflow';
+import { Handle, Position, useUpdateNodeInternals } from 'reactflow';
 import { useDocs } from '../context/DocsContext';
 
 export interface ResourceNodeData {
@@ -134,9 +134,21 @@ const logisticNames = {
   merger: 'Merger',
 } as const;
 
-export function LogisticNode({ data }: NodeProps<LogisticNodeData>) {
+export function LogisticNode({ id, data }: NodeProps<LogisticNodeData>) {
+  const updateNodeInternals = useUpdateNodeInternals();
   const { type, rules } = data;
   const isSplitter = type.startsWith('splitter');
+  const prevIsSplitter = useRef(isSplitter);
+
+  useEffect(() => {
+    if (prevIsSplitter.current !== isSplitter) {
+      prevIsSplitter.current = isSplitter;
+    }
+  }, [isSplitter]);
+
+  if (prevIsSplitter.current !== isSplitter) {
+    updateNodeInternals(id);
+  }
 
   if (!isSplitter) {
     return (
