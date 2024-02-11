@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@heroicons/react": "^2.1.1",
-    "fflate": "^0.8.1",
+    "fflate": "^0.8.2",
     "idb": "^8.0.0",
     "idb-keyval": "^6.2.1",
     "immer": "^10.0.3",
@@ -21,17 +21,17 @@
     "react-draggable": "^4.4.6",
     "react-error-boundary": "^4.0.12",
     "reactflow": "^11.10.3",
-    "vite": "^5.0.12",
-    "wouter": "^2.12.1"
+    "vite": "^5.1.1",
+    "wouter": "^3.0.0"
   },
   "devDependencies": {
-    "@types/node": "^20.11.5",
+    "@types/node": "^20.11.17",
     "@types/react": "^18.2.55",
-    "@types/react-dom": "^18.2.18",
-    "@vitejs/plugin-react-swc": "^3.5.0",
+    "@types/react-dom": "^18.2.19",
+    "@vitejs/plugin-react-swc": "^3.6.0",
     "autoprefixer": "^10.4.17",
-    "daisyui": "^4.6.0",
-    "postcss": "^8.4.33",
+    "daisyui": "^4.6.2",
+    "postcss": "^8.4.35",
     "prettier": "3.2.5",
     "prettier-plugin-tailwindcss": "^0.5.11",
     "sharp": "^0.33.2",
