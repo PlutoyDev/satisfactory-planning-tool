@@ -9,6 +9,7 @@ import { nanoid } from 'nanoid';
 import { ErrorBoundary, FallbackProps } from 'react-error-boundary';
 import { DocsProvider } from './context/DocsContext';
 import { ReactFlowProvider } from 'reactflow';
+import { ProductionLineInfoProvider, useProductionLineInfos } from './context/ProdLineInfoContext';
 
 interface ProductionLineInfo {
   id: string;
@@ -26,60 +27,32 @@ function ErrorFallback({ error }: FallbackProps) {
 }
 
 export function AppShell() {
-  // Production Line Info state are stored here for now, maybe move to a context later
-  const [, navigate] = useLocation();
-  const [prodInfos, setProdInfos] = useState<ProductionLineInfo[]>(() => {
-    const stored = localStorage.getItem('prodInfos');
-    return stored ? JSON.parse(stored) : [];
-  });
-
-  const createProdLine = useCallback(() => {
-    const id = nanoid(8);
-    setProdInfos(cur => [...cur, { id, title: 'Unnamed Production Line', icon: '???' }]);
-    navigate(`/production-lines/${id}`);
-  }, [navigate]);
-
-  const updateProdLine = useCallback((id: string, changes: Partial<Omit<ProductionLineInfo, 'id'>>) => {
-    setProdInfos(cur => cur.map(info => (info.id === id ? { ...info, ...changes } : info)));
-  }, []);
-
-  const deleteProdLine = useCallback(
-    (id: string) => {
-      setProdInfos(cur => cur.filter(info => info.id !== id));
-      navigate('/');
-    },
-    [navigate],
-  );
-
-  useEffect(() => {
-    // Save to local storage
-    localStorage.setItem('prodInfos', JSON.stringify(prodInfos));
-  }, [prodInfos]);
-
   return (
     <div>
-      <ErrorBoundary FallbackComponent={ErrorFallback}>
-        <DocsProvider LoaderComponent={<div className='skeleton h-screen w-screen' />}>
-          <div className='p absolute z-0 h-full w-full pl-20 pr-4 pt-2'>
-            <Route path='/'>
-              <Home />
-            </Route>
-            <Route path={routePattern}>
-              <ReactFlowProvider>
-                <ProductionGraph />
-              </ReactFlowProvider>
-            </Route>
-          </div>
-          <Sidebar prodInfos={prodInfos} createFn={createProdLine} />
-        </DocsProvider>
-      </ErrorBoundary>
+      <ProductionLineInfoProvider>
+        <ErrorBoundary FallbackComponent={ErrorFallback}>
+          <DocsProvider LoaderComponent={<div className='skeleton h-screen w-screen' />}>
+            <div className='p absolute z-0 h-full w-full pl-20 pr-4 pt-2'>
+              <Route path='/'>
+                <Home />
+              </Route>
+              <Route path={routePattern}>
+                <ReactFlowProvider>
+                  <ProductionGraph />
+                </ReactFlowProvider>
+              </Route>
+            </div>
+            <Sidebar />
+          </DocsProvider>
+        </ErrorBoundary>
+      </ProductionLineInfoProvider>
     </div>
   );
 }
 
-function Sidebar({ prodInfos, createFn }: { prodInfos: ProductionLineInfo[]; createFn: () => void }) {
+function Sidebar() {
+  const { productionLineInfos, createPl } = useProductionLineInfos();
   const [expanded, setExpanded] = useState(false);
-
   const [isAtHome] = useRoute('/');
 
   return (
@@ -123,7 +96,7 @@ function Sidebar({ prodInfos, createFn }: { prodInfos: ProductionLineInfo[]; cre
             }
           </div>
           <div className='divider'>{expanded ? 'Production Lines' : null}</div>
-          {prodInfos.map(info => (
+          {productionLineInfos.map(info => (
             <SidebarLink
               key={info.id}
               title={info.title}
@@ -141,7 +114,7 @@ function Sidebar({ prodInfos, createFn }: { prodInfos: ProductionLineInfo[]; cre
           <SidebarButton
             key='create'
             title='Create new'
-            onclick={createFn}
+            onclick={() => createPl()}
             icon={<PlusIcon className='inline-block h-8 w-8 text-primary' />}
             expanded={expanded}
           />
