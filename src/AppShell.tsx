@@ -51,7 +51,7 @@ export function AppShell() {
           <Home />
         </Route>
         <Route path={routePattern}>
-          <Suspense fallback={<div>Loading...</div>}>
+          <Suspense fallback={<div className='skeleton h-full w-full' />}>
             <ProductionGraph />
           </Suspense>
         </Route>
