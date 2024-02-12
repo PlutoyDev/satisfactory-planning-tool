@@ -4,7 +4,7 @@ import { useState, useCallback } from 'react';
 import { ReactFlow, Panel, Background, addEdge, applyEdgeChanges, applyNodeChanges, useReactFlow } from 'reactflow';
 import type { Node, Edge, OnConnect, OnNodesChange, OnEdgesChange } from 'reactflow';
 import useLegacyEffect from '../hooks/useLegacyEffect';
-import { ArrowsPointingOutIcon, ArrowsPointingInIcon } from '@heroicons/react/24/outline';
+import { ArrowsPointingOutIcon, ArrowsPointingInIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { screwFactoryNode } from '../misc/screwTest';
 import { nodeTypes, nodeTypeKeys, defaultNodeColor, type NodeTypeKeys, type FactoryNodeData } from '../components/FactoryGraph';
 import { loadProductionLine, saveProductionLine } from '../lib/ProductionLine';
@@ -138,7 +138,7 @@ function ProductionLineInfoEditPanel({ prodLineId }: ProductionLineInfoEditPanel
   const iconPaths = useDocs(
     ({ resources, items }) => [...Object.values(items), ...Object.values(resources)].map(i => i.iconPath).filter(Boolean) as string[],
   );
-  const { getPlInfo, updatePlInfo } = useProductionLineInfos();
+  const { getPlInfo, updatePlInfo, deletePl } = useProductionLineInfos();
   const plInfo = getPlInfo(prodLineId);
   const setPlInfo = useCallback(
     (info: Partial<ProductionLineInfo>) => {
@@ -146,8 +146,9 @@ function ProductionLineInfoEditPanel({ prodLineId }: ProductionLineInfoEditPanel
     },
     [plInfo, updatePlInfo],
   );
-  const ddRef = useRef<HTMLDetailsElement | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
+  const dropdownRef = useRef<HTMLDetailsElement | null>(null);
+  const closeDialogRef = useRef<HTMLDialogElement | null>(null);
 
   if (!plInfo) throw new Error('Production Line not found');
 
@@ -156,12 +157,12 @@ function ProductionLineInfoEditPanel({ prodLineId }: ProductionLineInfoEditPanel
       <div
         ref={panelRef}
         className='rounded-md bg-base-100 p-2 shadow-lg'
-        onMouseLeave={() => ddRef.current?.matches(':hover') || ddRef.current?.removeAttribute('open')}
+        onMouseLeave={() => dropdownRef.current?.matches(':hover') || dropdownRef.current?.removeAttribute('open')}
       >
         <h3 className='whitespace-nowrap font-bold'>Production Line Property</h3>
         <hr className='mt-1 pt-2' />
-        <div className='gap-2 text-center font-semibold'>
-          <div>
+        <div className='grid grid-cols-2 grid-rows-2 place-items-center gap-2 text-center font-semibold'>
+          <div className='col-span-2 '>
             <label className='mr-2 inline' htmlFor='title'>
               Title:
             </label>
@@ -173,11 +174,11 @@ function ProductionLineInfoEditPanel({ prodLineId }: ProductionLineInfoEditPanel
               className='input input-sm input-primary'
             />
           </div>
-          <details ref={ddRef} className='dropdown dropdown-bottom w-full pt-2'>
+          <details ref={dropdownRef} className='dropdown dropdown-bottom inline-block'>
             <summary className='btn btn-sm btn-block'>Change Icon</summary>
             <div
               className='clean-scrollbar dropdown-content max-h-24 overflow-y-auto rounded-box bg-base-100 p-2 shadow-sm'
-              onMouseLeave={() => panelRef.current?.matches(':hover') || ddRef.current?.removeAttribute('open')}
+              onMouseLeave={() => panelRef.current?.matches(':hover') || dropdownRef.current?.removeAttribute('open')}
             >
               <div className='grid w-max auto-rows-fr grid-cols-8 gap-1'>
                 {iconPaths.map((icon, i) => {
@@ -186,7 +187,7 @@ function ProductionLineInfoEditPanel({ prodLineId }: ProductionLineInfoEditPanel
                     return null;
                   }
                   return (
-                    <button type='button' key={i} onClick={() => (setPlInfo({ icon }), ddRef.current?.removeAttribute('open'))}>
+                    <button type='button' key={i} onClick={() => (setPlInfo({ icon }), dropdownRef.current?.removeAttribute('open'))}>
                       <img src={icon} alt='' onError={() => setHasIcon(false)} className='h-6 w-6' />
                     </button>
                   );
@@ -194,6 +195,37 @@ function ProductionLineInfoEditPanel({ prodLineId }: ProductionLineInfoEditPanel
               </div>
             </div>
           </details>
+          <div>
+            <button
+              type='button'
+              className='btn btn-error btn-sm'
+              onClick={() => {
+                closeDialogRef.current?.showModal();
+              }}
+            >
+              <TrashIcon className='h-5 w-5' />
+              Delete
+            </button>
+            <dialog ref={closeDialogRef} className='modal'>
+              <div className='modal-box'>
+                <form method='dialog'>
+                  <button className='btn btn-circle btn-ghost btn-sm absolute right-2 top-2'>✕</button>
+                </form>
+                <p>Are you sure you want to delete this production line?</p>
+                <div className='modal-action'>
+                  <button className='btn btn-sm' onClick={() => closeDialogRef.current?.close()}>
+                    No
+                  </button>
+                  <button className='btn btn-error btn-sm' onClick={() => deletePl(prodLineId)}>
+                    Yes
+                  </button>
+                </div>
+              </div>
+              <form method='dialog' className='modal-backdrop'>
+                <button>close</button>
+              </form>
+            </dialog>
+          </div>
         </div>
       </div>
     </Panel>
