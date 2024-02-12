@@ -1,16 +1,23 @@
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { useRoute, useLocation } from 'wouter';
 import { useState, useCallback } from 'react';
 import { ReactFlow, Panel, Background, addEdge, applyEdgeChanges, applyNodeChanges, useReactFlow } from 'reactflow';
 import type { Node, Edge, OnConnect, OnNodesChange, OnEdgesChange } from 'reactflow';
 import useLegacyEffect from '../hooks/useLegacyEffect';
-import { ArrowsPointingOutIcon, ArrowsPointingInIcon, TrashIcon } from '@heroicons/react/24/outline';
+import {
+  ArrowsPointingOutIcon,
+  ArrowsPointingInIcon,
+  TrashIcon,
+  CheckCircleIcon,
+  ArchiveBoxArrowDownIcon,
+} from '@heroicons/react/24/outline';
 import { screwFactoryNode } from '../misc/screwTest';
 import { nodeTypes, nodeTypeKeys, defaultNodeColor, type NodeTypeKeys, type FactoryNodeData } from '../components/FactoryGraph';
 import { loadProductionLine, saveProductionLine } from '../lib/ProductionLine';
 import { useDocs } from '../context/DocsContext';
 import { nanoid } from 'nanoid';
 import { ProductionLineInfo, useProductionLineInfos } from '../context/ProdLineInfoContext';
+import debounce from 'lodash/debounce';
 
 export const routePattern = '/production-lines/:id' as const;
 
@@ -20,6 +27,9 @@ export function ProductionGraph() {
   const docs = useDocs();
 
   const [loading, setLoading] = useState(true);
+  const [saved, setSaved] = useState(true);
+  const [saving, setSaving] = useState(false);
+
   const [nodes, setNodes] = useState<Node[]>([]);
   const [edges, setEdges] = useState<Edge[]>([]);
   const rfInstance = useReactFlow<FactoryNodeData>();
@@ -28,9 +38,9 @@ export function ProductionGraph() {
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   //ReactFlow handlers
-  const onNodesChange: OnNodesChange = useCallback(changes => setNodes(nds => applyNodeChanges(changes, nds)), []);
-  const onEdgesChange: OnEdgesChange = useCallback(changes => setEdges(eds => applyEdgeChanges(changes, eds)), []);
-  const onConnect: OnConnect = useCallback(connection => setEdges(edges => addEdge(connection, edges)), []);
+  const onNodesChange: OnNodesChange = useCallback(changes => (setNodes(nds => applyNodeChanges(changes, nds)), setSaved(false)), []);
+  const onEdgesChange: OnEdgesChange = useCallback(changes => (setEdges(eds => applyEdgeChanges(changes, eds)), setSaved(false)), []);
+  const onConnect: OnConnect = useCallback(connection => (setEdges(edges => addEdge(connection, edges)), setSaved(false)), []);
   const onDrop = useCallback(
     (event: React.DragEvent<HTMLDivElement>) => {
       event.preventDefault();
@@ -48,11 +58,29 @@ export function ProductionGraph() {
       setLoading(false);
       setNodes(nodes);
       setEdges(edges);
+      setSaved(true);
       if (viewport) {
-        rfInstance.setViewport(viewport, { duration: 300 });
+        rfInstance.setViewport(viewport, { duration: 100 });
       }
     });
   }, [params?.id, rfInstance]);
+
+  const save = () => {
+    setSaving(false);
+    saveProductionLine({ prodLineId: params?.id, nodes, edges, viewport: rfInstance.getViewport() }).then(() => {
+      setSaved(true);
+    });
+  };
+
+  const debouncedSave = useCallback(debounce(save, 3000, { maxWait: 10 }), [save]);
+
+  useEffect(() => {
+    if (saved) {
+      return;
+    }
+    setSaving(true);
+    debouncedSave();
+  }, [saved, debouncedSave]);
 
   if (loading) {
     return <div className='skeleton h-full w-full' />;
@@ -122,7 +150,7 @@ export function ProductionGraph() {
             </div>
           </div>
         </Panel>
-        <ProductionLineInfoEditPanel prodLineId={params?.id!} />
+        <ProductionLineInfoEditPanel prodLineId={params?.id!} isSaving={saving} isSaved={saved} saveFn={save} />
         <NodePickerPanel />
         <Background />
       </ReactFlow>
@@ -132,9 +160,12 @@ export function ProductionGraph() {
 
 interface ProductionLineInfoEditPanelProps {
   prodLineId: string;
+  isSaving: boolean;
+  isSaved: boolean;
+  saveFn: () => void;
 }
 
-function ProductionLineInfoEditPanel({ prodLineId }: ProductionLineInfoEditPanelProps) {
+function ProductionLineInfoEditPanel({ prodLineId, isSaving, isSaved, saveFn }: ProductionLineInfoEditPanelProps) {
   const iconPaths = useDocs(
     ({ resources, items }) => [...Object.values(items), ...Object.values(resources)].map(i => i.iconPath).filter(Boolean) as string[],
   );
@@ -159,10 +190,10 @@ function ProductionLineInfoEditPanel({ prodLineId }: ProductionLineInfoEditPanel
         className='rounded-md bg-base-100 p-2 shadow-lg'
         onMouseLeave={() => dropdownRef.current?.matches(':hover') || dropdownRef.current?.removeAttribute('open')}
       >
-        <h3 className='whitespace-nowrap font-bold'>Production Line Property</h3>
+        <span className='inline whitespace-nowrap font-bold'>Production Line Property</span>
         <hr className='mt-1 pt-2' />
-        <div className='grid grid-cols-2 grid-rows-2 place-items-center gap-2 text-center font-semibold'>
-          <div className='col-span-2 '>
+        <div className='grid grid-cols-3 grid-rows-2 place-items-center gap-2 text-center font-semibold'>
+          <div className='col-span-3 '>
             <label className='mr-2 inline' htmlFor='title'>
               Title:
             </label>
@@ -226,6 +257,24 @@ function ProductionLineInfoEditPanel({ prodLineId }: ProductionLineInfoEditPanel
               </form>
             </dialog>
           </div>
+          <button type='button' className='btn btn-sm' disabled={isSaving || isSaved} onClick={saveFn}>
+            {isSaving ? (
+              <>
+                <span className='loading loading-spinner loading-sm' />
+                Saving
+              </>
+            ) : isSaved ? (
+              <>
+                <CheckCircleIcon className='h-5 w-5' />
+                Saved
+              </>
+            ) : (
+              <>
+                <ArchiveBoxArrowDownIcon className='h-5 w-5' />
+                Save
+              </>
+            )}
+          </button>
         </div>
       </div>
     </Panel>
