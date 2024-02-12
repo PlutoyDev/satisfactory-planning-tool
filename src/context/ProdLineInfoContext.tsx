@@ -1,8 +1,8 @@
 import { nanoid } from 'nanoid';
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'wouter';
 
-interface ProductionLineInfo {
+export interface ProductionLineInfo {
   id: string;
   title: string;
   icon: string;
@@ -42,7 +42,7 @@ export function ProductionLineInfoProvider({ children }: ProviderProps) {
 
   const value: ProductionLineContextValue = {
     productionLineInfos,
-    getPlInfo: id => productionLineInfos.find(info => info.id === id),
+    getPlInfo: id => useMemo(() => productionLineInfos.find(info => info.id === id), [productionLineInfos, id]),
     createPl: (toNavigate = true) => {
       const id = nanoid(8);
       setProductionLineInfos(cur => [...cur, { id, title: 'Unnamed Production Line', icon: '???' }]);

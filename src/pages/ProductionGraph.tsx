@@ -10,6 +10,7 @@ import { nodeTypes, nodeTypeKeys, defaultNodeColor, type NodeTypeKeys, type Fact
 import { loadProductionLine, saveProductionLine } from '../lib/ProductionLine';
 import { useDocs } from '../context/DocsContext';
 import { nanoid } from 'nanoid';
+import { ProductionLineInfo, useProductionLineInfos } from '../context/ProdLineInfoContext';
 
 export const routePattern = '/production-lines/:id' as const;
 
@@ -121,10 +122,81 @@ export function ProductionGraph() {
             </div>
           </div>
         </Panel>
+        <ProductionLineInfoEditPanel prodLineId={params?.id!} />
         <NodePickerPanel />
         <Background />
       </ReactFlow>
     </div>
+  );
+}
+
+interface ProductionLineInfoEditPanelProps {
+  prodLineId: string;
+}
+
+function ProductionLineInfoEditPanel({ prodLineId }: ProductionLineInfoEditPanelProps) {
+  const iconPaths = useDocs(
+    ({ resources, items }) => [...Object.values(items), ...Object.values(resources)].map(i => i.iconPath).filter(Boolean) as string[],
+  );
+  const { getPlInfo, updatePlInfo } = useProductionLineInfos();
+  const plInfo = getPlInfo(prodLineId);
+  const setPlInfo = useCallback(
+    (info: Partial<ProductionLineInfo>) => {
+      updatePlInfo({ ...plInfo, ...info, id: prodLineId });
+    },
+    [plInfo, updatePlInfo],
+  );
+  const ddRef = useRef<HTMLDetailsElement | null>(null);
+  const panelRef = useRef<HTMLDivElement | null>(null);
+
+  if (!plInfo) throw new Error('Production Line not found');
+
+  return (
+    <Panel position='top-left'>
+      <div
+        ref={panelRef}
+        className='rounded-md bg-base-100 p-2 shadow-lg'
+        onMouseLeave={() => ddRef.current?.matches(':hover') || ddRef.current?.removeAttribute('open')}
+      >
+        <h3 className='whitespace-nowrap font-bold'>Production Line Property</h3>
+        <hr className='mt-1 pt-2' />
+        <div className='gap-2 text-center font-semibold'>
+          <div>
+            <label className='mr-2 inline' htmlFor='title'>
+              Title:
+            </label>
+            <input
+              type='text'
+              id='title'
+              value={plInfo.title}
+              onChange={e => setPlInfo({ title: e.target.value })}
+              className='input input-sm input-primary'
+            />
+          </div>
+          <details ref={ddRef} className='dropdown dropdown-bottom w-full pt-2'>
+            <summary className='btn btn-sm btn-block'>Change Icon</summary>
+            <div
+              className='clean-scrollbar dropdown-content max-h-24 overflow-y-auto rounded-box bg-base-100 p-2 shadow-sm'
+              onMouseLeave={() => panelRef.current?.matches(':hover') || ddRef.current?.removeAttribute('open')}
+            >
+              <div className='grid w-max auto-rows-fr grid-cols-8 gap-1'>
+                {iconPaths.map((icon, i) => {
+                  const [hasIcon, setHasIcon] = useState(true);
+                  if (hasIcon === false) {
+                    return null;
+                  }
+                  return (
+                    <button type='button' key={i} onClick={() => (setPlInfo({ icon }), ddRef.current?.removeAttribute('open'))}>
+                      <img src={icon} alt='' onError={() => setHasIcon(false)} className='h-6 w-6' />
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </details>
+        </div>
+      </div>
+    </Panel>
   );
 }
 
@@ -138,9 +210,9 @@ const nodeNames = {
 function NodePickerPanel() {
   return (
     <Panel position='top-right'>
-      <div className='w-48 rounded-md bg-base-100 p-2 pt-0 shadow-lg first:rounded-t-md last:rounded-b-md [&>*]:w-full '>
-        <h3 className='whitespace-nowrap text-lg font-bold'>Node List</h3>
-        <div className='divider !my-0' />
+      <div className='w-48 rounded-md bg-base-100 p-2 shadow-lg first:rounded-t-md last:rounded-b-md [&>*]:w-full '>
+        <h3 className='whitespace-nowrap font-bold'>Node List</h3>
+        <hr className='mt-1 pt-2' />
         <div className='grid grid-cols-2 place-items-center gap-2 text-center font-semibold text-primary-content'>
           {nodeTypeKeys.map(key => (
             <div

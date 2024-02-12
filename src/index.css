@@ -6,3 +6,21 @@
 
 @tailwind components;
 @tailwind utilities;
+
+.clean-scrollbar::-webkit-scrollbar {
+  width: 12px;
+}
+
+.clean-scrollbar::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.2);
+  border-radius: 6px;
+}
+
+.clean-scrollbar::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.clean-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.2) rgba(0, 0, 0, 0.1);
+}
