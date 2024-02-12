@@ -1,8 +1,8 @@
-import { useEffect, useRef } from 'react';
+import { forwardRef, useEffect, useRef } from 'react';
 import { useRoute, useLocation } from 'wouter';
 import { useState, useCallback } from 'react';
 import { ReactFlow, Panel, Background, addEdge, applyEdgeChanges, applyNodeChanges, useReactFlow } from 'reactflow';
-import type { Node, Edge, OnConnect, OnNodesChange, OnEdgesChange } from 'reactflow';
+import type { Node, Edge, OnConnect, OnNodesChange, OnEdgesChange, PanelPosition } from 'reactflow';
 import useLegacyEffect from '../hooks/useLegacyEffect';
 import {
   ArrowsPointingOutIcon,
@@ -12,7 +12,15 @@ import {
   ArchiveBoxArrowDownIcon,
 } from '@heroicons/react/24/outline';
 import { screwFactoryNode } from '../misc/screwTest';
-import { nodeTypes, nodeTypeKeys, defaultNodeColor, type NodeTypeKeys, type FactoryNodeData } from '../components/FactoryGraph';
+import {
+  nodeTypes,
+  nodeTypeKeys,
+  defaultNodeColor,
+  type NodeTypeKeys,
+  type FactoryNodeData,
+  ResourceNodeDataEditor,
+  FactoryNodeProperties,
+} from '../components/FactoryGraph';
 import { loadProductionLine, saveProductionLine } from '../lib/ProductionLine';
 import { useDocs } from '../context/DocsContext';
 import { nanoid } from 'nanoid';
@@ -33,6 +41,7 @@ export function ProductionGraph() {
   const [nodes, setNodes] = useState<Node[]>([]);
   const [edges, setEdges] = useState<Edge[]>([]);
   const rfInstance = useReactFlow<FactoryNodeData>();
+  const [selectedNodeId, setSelectedNodeId] = useState(undefined as string | undefined);
 
   const elRef = useRef<HTMLDivElement | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -101,6 +110,8 @@ export function ProductionGraph() {
         onDragOver={e => (e.preventDefault(), (e.dataTransfer.dropEffect = 'move'))}
         //Keyboard Props
         deleteKeyCode={['Delete', 'Backspace']}
+        onNodeClick={(_, node) => setSelectedNodeId(node.id)}
+        onPaneClick={() => setSelectedNodeId(undefined)}
       >
         <Panel position='top-center'>
           <div className='flex items-center space-x-2 rounded-sm bg-base-100 p-1 shadow-lg'>
@@ -152,9 +163,48 @@ export function ProductionGraph() {
         </Panel>
         <ProductionLineInfoEditPanel prodLineId={params?.id!} isSaving={saving} isSaved={saved} saveFn={save} />
         <NodePickerPanel />
+        <NodeDataEditorPanel selectedNodeId={selectedNodeId} />
         <Background />
       </ReactFlow>
     </div>
+  );
+}
+
+interface NodeDataEditorPanelProps {
+  selectedNodeId?: string;
+}
+
+function NodeDataEditorPanel({ selectedNodeId }: NodeDataEditorPanelProps) {
+  const rfInstance = useReactFlow<FactoryNodeData>();
+  const selectedNode = selectedNodeId && (rfInstance.getNode(selectedNodeId) as FactoryNodeProperties);
+  if (!selectedNode || selectedNode.type !== 'resource') {
+    return (
+      <Panel position='bottom-right'>
+        <div className='w-48 rounded-md bg-base-100 p-2 shadow-lg first:rounded-t-md last:rounded-b-md [&>*]:w-full '>
+          <h3 className='whitespace-nowrap font-bold'>Node Property</h3>
+          <hr className='mt-1 pt-2' />
+          <p>{!selectedNode ? 'No node selected / found' : 'incompatible node'}</p>
+        </div>
+      </Panel>
+    );
+  }
+  return (
+    <Panel position='bottom-right'>
+      <div className='w-48 rounded-md bg-base-100 p-2 shadow-lg first:rounded-t-md last:rounded-b-md [&>*]:w-full '>
+        <h3 className='whitespace-nowrap font-bold'>Node Property</h3>
+        <hr className='mt-1 pt-2' />
+        <ResourceNodeDataEditor
+          node={selectedNode}
+          updateNode={u =>
+            rfInstance.setNodes(nds => {
+              const i = nds.findIndex(n => n.id === selectedNode.id);
+              if (i === -1) return nds;
+              return [...nds.slice(0, i), { ...nds[i], ...u }, ...nds.slice(i + 1)];
+            })
+          }
+        />
+      </div>
+    </Panel>
   );
 }
 

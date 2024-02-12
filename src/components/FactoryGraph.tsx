@@ -1,8 +1,14 @@
 // Reactflow custom nodes
-import { useRef, useEffect, type ComponentType } from 'react';
+import { useRef, useEffect, type ComponentType, useMemo } from 'react';
 import type { NodeProps, Node } from 'reactflow';
-import { Handle, Position, useUpdateNodeInternals } from 'reactflow';
+import { Handle, Position, useReactFlow, useUpdateNodeInternals } from 'reactflow';
 import { useDocs } from '../context/DocsContext';
+import Select from 'react-select';
+
+interface NodeDataEditorProps<D extends Record<string, any>, T extends string | undefined = string | undefined> {
+  node: Node<D, T>;
+  updateNode: (update: Partial<Node<Partial<D>, T>>) => void;
+}
 
 export interface ResourceNodeData {
   resourceId?: string;
@@ -35,6 +41,43 @@ export function ResourceNode({ data }: NodeProps<ResourceNodeData>) {
         )}
       </div>
       <Handle type='source' style={{ backgroundColor: defaultNodeColor.resource }} position={Position.Right} />
+    </>
+  );
+}
+
+export function ResourceNodeDataEditor(props: NodeDataEditorProps<ResourceNodeData, 'resource'>) {
+  const resourceInfos = useDocs(d => d.resources);
+  const options = useMemo(
+    () => Object.values(resourceInfos).map(({ key, displayName }) => ({ value: key, label: displayName })),
+    [resourceInfos],
+  );
+  const { node, updateNode } = props;
+
+  return (
+    <>
+      <label htmlFor='resourceId' className='form-control w-full max-w-xs'>
+        <div className='label'>
+          <span className='label-text'>Resource: </span>
+        </div>
+        <Select
+          id='resourceId'
+          options={options}
+          isClearable
+          isSearchable
+          menuPlacement='top'
+          onChange={e => updateNode({ ...node, data: { ...node.data, resourceId: e?.value } })}
+          value={{
+            value: node.data.resourceId,
+            label: (node.data.resourceId && resourceInfos[node.data.resourceId]?.displayName) ?? 'Unset',
+          }}
+        />
+      </label>
+      <label htmlFor='speed' className='form-control w-full max-w-xs'>
+        <div className='label'>
+          <span className='label-text'>Speed: </span>
+        </div>
+        <input id='speed' type='number' defaultValue={node.data.speed} />
+      </label>
     </>
   );
 }
