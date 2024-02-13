@@ -147,15 +147,8 @@ export function ItemNodeDataEditor(props: NodeDataEditorProps<ItemNodeData, 'ite
   const dropdownRef = useRef<HTMLDetailsElement>(null);
   const itemInfos = useDocs(d => d.items);
   const [search, setSearch] = useState('');
-  const options = useMemo(
-    () =>
-      Object.values(itemInfos).reduce(
-        (acc, { key, displayName, iconPath }) => {
-          if (search && !displayName.toLowerCase().includes(search.toLowerCase())) return acc;
-          return [...acc, { key, displayName, iconPath }];
-        },
-        [] as { key: string; displayName: string; iconPath: string }[],
-      ),
+  const filtered = useMemo(
+    () => Object.values(itemInfos).filter(({ displayName }) => displayName.toLowerCase().includes(search.toLowerCase())),
     [itemInfos, search],
   );
   const { node, updateNode } = props;
@@ -169,9 +162,9 @@ export function ItemNodeDataEditor(props: NodeDataEditorProps<ItemNodeData, 'ite
         </div>
         <details ref={dropdownRef} className='dropdown dropdown-top w-full'>
           <summary className='btn btn-sm btn-block'>
-            {node.data.itemId ? (
+            {selInfo ? (
               <>
-                <img src={selInfo.iconPath} alt={selInfo.displayName} className='h-6 w-6' />
+                {selInfo.iconPath && <img src={selInfo.iconPath} alt={selInfo.displayName} className='h-6 w-6' />}
                 {selInfo.displayName}
               </>
             ) : (
@@ -187,7 +180,7 @@ export function ItemNodeDataEditor(props: NodeDataEditorProps<ItemNodeData, 'ite
               onChange={e => setSearch(e.target.value)}
             />
             <ul className='menu menu-horizontal menu-sm h-48 overflow-y-scroll '>
-              {options.map(({ key, iconPath, displayName }) => (
+              {filtered.map(({ key, iconPath, displayName }) => (
                 <li className='w-full' key={key}>
                   <button
                     className='btn btn-sm btn-block items-start justify-start'
@@ -197,7 +190,7 @@ export function ItemNodeDataEditor(props: NodeDataEditorProps<ItemNodeData, 'ite
                       dropdownRef.current?.removeAttribute('open');
                     }}
                   >
-                    <img src={iconPath} alt={displayName} className='h-6 w-6' />
+                    {iconPath && <img src={iconPath} alt={displayName} className='h-6 w-6' />}
                     {displayName}
                   </button>
                 </li>
@@ -231,14 +224,12 @@ export interface RecipeNodeData {
 
 export function RecipeNode({ data }: NodeProps<RecipeNodeData>) {
   const { recipeId, machineId, clockspeeds = 1, qty } = data;
-  const recipeInfo = recipeId ? useDocs(({ recipes }) => recipes[recipeId], [recipeId]) : undefined;
-  const machineInfo =
-    machineId || recipeInfo?.producedIn
-      ? useDocs(
-          ({ productionMachines }) => productionMachines[(machineId ?? recipeInfo?.producedIn) as string],
-          [machineId, recipeInfo?.producedIn],
-        )
-      : undefined;
+  const recipeInfo = useDocs(({ recipes }) => (recipeId ? recipes[recipeId] : undefined), [recipeId]);
+  const machineInfo = useDocs(
+    ({ productionMachines }) =>
+      machineId || recipeInfo?.producedIn ? productionMachines[(machineId ?? recipeInfo?.producedIn) as string] : undefined,
+    [machineId, recipeInfo?.producedIn],
+  );
 
   return (
     <>
@@ -261,6 +252,122 @@ export function RecipeNode({ data }: NodeProps<RecipeNodeData>) {
         )}
       </div>
       <Handle type='source' position={Position.Right} style={{ backgroundColor: defaultNodeColor.recipe }} />
+    </>
+  );
+}
+
+export function RecipeNodeDataEditor(props: NodeDataEditorProps<RecipeNodeData, 'recipe'>) {
+  const { recipes, productionMachines } = useDocs(({ recipes, productionMachines }) => ({ recipes, productionMachines }));
+  const { node, updateNode } = props;
+  const recipeInfo = node.data.recipeId && recipes[node.data.recipeId];
+  const machineInfo = node.data.machineId
+    ? productionMachines[node.data.machineId]
+    : recipeInfo
+      ? productionMachines[recipeInfo.producedIn]
+      : undefined;
+
+  const recipeDropdownRef = useRef<HTMLDetailsElement>(null);
+  const machineDropdownRef = useRef<HTMLDetailsElement>(null);
+  const [search, setSearch] = useState('');
+  const filteredRecipes = useMemo(
+    () =>
+      Object.values(recipes).filter(
+        ({ displayName, producedIn }) =>
+          displayName.toLowerCase().includes(search.toLowerCase()) &&
+          (!producedIn || !node.data.machineId || producedIn === node.data.machineId),
+      ),
+    [recipes, search, node.data.machineId ?? ''],
+  );
+
+  return (
+    <>
+      <label htmlFor='recipeId' className='form-control w-full'>
+        <div className='label'>
+          <span className='label-text'>Recipe: </span>
+        </div>
+        <details ref={recipeDropdownRef} className='dropdown dropdown-top w-full'>
+          <summary className='btn btn-sm btn-block'>{recipeInfo ? recipeInfo.displayName : 'Unset'}</summary>
+          <div className='dropdown-content right-0 z-10 w-72 rounded-box bg-base-200 p-2 shadow-sm'>
+            <input
+              type='text'
+              className='input input-sm input-bordered mb-1 w-full'
+              placeholder='Search...'
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+            <ul className='menu menu-horizontal menu-sm h-48 overflow-y-scroll '>
+              {filteredRecipes.map(({ key, displayName }) => (
+                <li className='w-full' key={key}>
+                  <button
+                    className='btn btn-sm btn-block items-start justify-start'
+                    type='button'
+                    onClick={e => {
+                      if (node.data.machineId) {
+                        delete node.data.machineId;
+                      }
+                      updateNode({ ...node, data: { ...node.data, recipeId: key } });
+                      recipeDropdownRef.current?.removeAttribute('open');
+                    }}
+                  >
+                    {displayName}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </details>
+      </label>
+      <label htmlFor='machineId' className='form-control w-full'>
+        <div className='label'>
+          <span className='label-text'>Machine: </span>
+        </div>
+        <details ref={machineDropdownRef} className='dropdown dropdown-top w-full'>
+          <summary className='btn btn-sm btn-block'>{machineInfo ? machineInfo.displayName : 'Unset'}</summary>
+          <ul className='menu dropdown-content menu-sm z-10 max-h-52 w-56 flex-nowrap overflow-y-scroll rounded-box bg-base-200 p-2 shadow-sm'>
+            {Object.values(productionMachines).map(({ key, displayName }) => (
+              <li className='w-full' key={key}>
+                <button
+                  className='btn btn-sm btn-block'
+                  type='button'
+                  onClick={() => {
+                    if (recipeInfo && recipeInfo?.producedIn !== key) {
+                      delete node.data.recipeId;
+                    }
+                    updateNode({ ...node, data: { ...node.data, machineId: key } });
+                    machineDropdownRef.current?.removeAttribute('open');
+                  }}
+                >
+                  {displayName}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </details>
+      </label>
+      <label htmlFor='clockspeeds' className='form-control w-full'>
+        <div className='label'>
+          <span className='label-text'>Clockspeeds: </span>
+        </div>
+        <input
+          id='clockspeeds'
+          type='number'
+          className='input input-sm input-bordered appearance-none'
+          defaultValue={node.data.clockspeeds}
+          onChange={e => updateNode({ ...node, data: { ...node.data, clockspeeds: +e.target.value } })}
+        />
+      </label>
+      <label htmlFor='qty' className='form-control w-full'>
+        <div className='label'>
+          <span className='label-text'>Quantity: </span>
+        </div>
+        <input
+          id='qty'
+          type='number'
+          className='input input-sm input-bordered appearance-none'
+          defaultValue={node.data.qty}
+          onChange={e => updateNode({ ...node, data: { ...node.data, qty: +e.target.value } })}
+        />
+      </label>
     </>
   );
 }
@@ -333,6 +440,32 @@ export function LogisticNode({ id, data }: NodeProps<LogisticNodeData>) {
   );
 }
 
+export function LogisticNodeDataEditor(props: NodeDataEditorProps<LogisticNodeData, 'logistic'>) {
+  const { node, updateNode } = props;
+  const { type = 'splitter', rules } = node.data;
+
+  return (
+    <>
+      <label htmlFor='type' className='form-control w-full'>
+        <div className='label'>
+          <span className='label-text'>Type: </span>
+        </div>
+        <select
+          id='type'
+          className='select select-bordered w-full'
+          value={type}
+          onChange={e => updateNode({ ...node, data: { ...node.data, type: e.target.value as LogisticNodeData['type'] } })}
+        >
+          <option value='splitter'>Splitter</option>
+          <option value='splitterSmart'>Smart Splitter</option>
+          <option value='splitterProg'>Programmable Splitter</option>
+          <option value='merger'>Merger</option>
+        </select>
+      </label>
+    </>
+  );
+}
+
 // Used by ReactFlow to render custom nodes
 export const nodeTypes = {
   item: ItemNode,
@@ -350,6 +483,13 @@ export const defaultNodeColor = {
   recipe: '#F6AD55',
   logistic: '#71DA8F',
 } satisfies Record<NodeTypeKeys, string>;
+
+export const nodeEditors = {
+  item: ItemNodeDataEditor,
+  resource: ResourceNodeDataEditor,
+  recipe: RecipeNodeDataEditor,
+  logistic: LogisticNodeDataEditor,
+} as const satisfies Record<NodeTypeKeys, ComponentType<NodeDataEditorProps<any, any>>>;
 
 type CustomNodeDataMap = {
   [K in NodeTypeKeys]: (typeof nodeTypes)[K] extends ComponentType<NodeProps<infer D>> ? D : never;
