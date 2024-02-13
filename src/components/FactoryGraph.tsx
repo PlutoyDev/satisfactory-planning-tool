@@ -1,5 +1,5 @@
 // Reactflow custom nodes
-import { useRef, useEffect, type ComponentType, useMemo } from 'react';
+import { useRef, useEffect, type ComponentType, useMemo, useState } from 'react';
 import type { NodeProps, Node } from 'reactflow';
 import { Handle, Position, useUpdateNodeInternals } from 'reactflow';
 import { useDocs } from '../context/DocsContext';
@@ -111,10 +111,13 @@ export function ItemNode({ data }: NodeProps<ItemNodeData>) {
   const { itemId, speed } = data;
   const itemInfo =
     itemId &&
-    useDocs(({ items }) => {
-      const item = items[itemId];
-      return { imgSrc: item?.iconPath ?? null, itemName: item?.displayName ?? 'Unknown' };
-    });
+    useDocs(
+      ({ items }) => {
+        const item = items[itemId];
+        return { imgSrc: item?.iconPath ?? null, itemName: item?.displayName ?? 'Unknown' };
+      },
+      [itemId],
+    );
 
   return (
     <>
@@ -136,6 +139,85 @@ export function ItemNode({ data }: NodeProps<ItemNodeData>) {
         </div>
       }
       <Handle type='source' position={Position.Right} style={{ backgroundColor: defaultNodeColor.item }} />
+    </>
+  );
+}
+
+export function ItemNodeDataEditor(props: NodeDataEditorProps<ItemNodeData, 'item'>) {
+  const dropdownRef = useRef<HTMLDetailsElement>(null);
+  const itemInfos = useDocs(d => d.items);
+  const [search, setSearch] = useState('');
+  const options = useMemo(
+    () =>
+      Object.values(itemInfos).reduce(
+        (acc, { key, displayName, iconPath }) => {
+          if (search && !displayName.toLowerCase().includes(search.toLowerCase())) return acc;
+          return [...acc, { key, displayName, iconPath }];
+        },
+        [] as { key: string; displayName: string; iconPath: string }[],
+      ),
+    [itemInfos, search],
+  );
+  const { node, updateNode } = props;
+  const selInfo = node.data.itemId && itemInfos[node.data.itemId];
+
+  return (
+    <>
+      <label htmlFor='itemId' className='form-control w-full'>
+        <div className='label'>
+          <span className='label-text'>Item: </span>
+        </div>
+        <details ref={dropdownRef} className='dropdown dropdown-top w-full'>
+          <summary className='btn btn-sm btn-block'>
+            {node.data.itemId ? (
+              <>
+                <img src={selInfo.iconPath} alt={selInfo.displayName} className='h-6 w-6' />
+                {selInfo.displayName}
+              </>
+            ) : (
+              'Unset'
+            )}
+          </summary>
+          <div className='dropdown-content right-0 z-10 w-72 rounded-box bg-base-200 p-2 shadow-sm'>
+            <input
+              type='text'
+              className='input input-sm input-bordered mb-1 w-full'
+              placeholder='Search...'
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+            <ul className='menu menu-horizontal menu-sm h-48 overflow-y-scroll '>
+              {options.map(({ key, iconPath, displayName }) => (
+                <li className='w-full' key={key}>
+                  <button
+                    className='btn btn-sm btn-block items-start justify-start'
+                    type='button'
+                    onClick={e => {
+                      updateNode({ ...node, data: { ...node.data, itemId: key } });
+                      dropdownRef.current?.removeAttribute('open');
+                    }}
+                  >
+                    <img src={iconPath} alt={displayName} className='h-6 w-6' />
+                    {displayName}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </details>
+      </label>
+      <label htmlFor='speed' className='form-control w-full'>
+        <div className='label'>
+          <span className='label-text'>Speed: </span>
+        </div>
+        <input
+          id='speed'
+          type='number'
+          className='input input-sm input-bordered appearance-none'
+          defaultValue={node.data.speed}
+          onChange={e => +e.target.value && updateNode({ ...node, data: { ...node.data, speed: +e.target.value } })}
+        />
+      </label>
     </>
   );
 }

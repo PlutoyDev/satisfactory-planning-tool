@@ -20,6 +20,7 @@ import {
   type FactoryNodeData,
   ResourceNodeDataEditor,
   FactoryNodeProperties,
+  ItemNodeDataEditor,
 } from '../components/FactoryGraph';
 import { loadProductionLine, saveProductionLine } from '../lib/ProductionLine';
 import { useDocs } from '../context/DocsContext';
@@ -177,10 +178,10 @@ interface NodeDataEditorPanelProps {
 function NodeDataEditorPanel({ selectedNodeId }: NodeDataEditorPanelProps) {
   const rfInstance = useReactFlow<FactoryNodeData>();
   const selectedNode = selectedNodeId && (rfInstance.getNode(selectedNodeId) as FactoryNodeProperties);
-  if (!selectedNode || selectedNode.type !== 'resource') {
+  if (!selectedNode || selectedNode.type !== 'item') {
     return (
       <Panel position='bottom-right'>
-        <div className='w-48 rounded-md bg-base-100 p-2 shadow-lg first:rounded-t-md last:rounded-b-md [&>*]:w-full '>
+        <div className='w-64 rounded-md bg-base-100 p-2 shadow-lg first:rounded-t-md last:rounded-b-md [&>*]:w-full '>
           <h3 className='whitespace-nowrap font-bold'>Node Property</h3>
           <hr className='mt-1 pt-2' />
           <p>{!selectedNode ? 'No node selected / found' : 'incompatible node'}</p>
@@ -193,7 +194,7 @@ function NodeDataEditorPanel({ selectedNodeId }: NodeDataEditorPanelProps) {
       <div className='w-64 rounded-md bg-base-100 p-2 shadow-lg first:rounded-t-md last:rounded-b-md [&>*]:w-full '>
         <h3 className='whitespace-nowrap font-bold'>Node Property</h3>
         <hr className='mt-1 pt-2' />
-        <ResourceNodeDataEditor
+        <ItemNodeDataEditor
           node={selectedNode}
           updateNode={u => rfInstance.setNodes(nds => nds.map(n => (n.id === u.id ? { ...n, ...u } : n)))}
         />
