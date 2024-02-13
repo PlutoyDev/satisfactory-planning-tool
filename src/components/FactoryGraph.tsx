@@ -3,6 +3,7 @@ import { useRef, useEffect, type ComponentType, useMemo, useState } from 'react'
 import type { NodeProps, Node } from 'reactflow';
 import { Handle, Position, useUpdateNodeInternals } from 'reactflow';
 import { useDocs } from '../context/DocsContext';
+import { getFocusedColor } from '../lib/colorUtils';
 
 interface NodeDataEditorProps<D extends Record<string, any>, T extends string | undefined = string | undefined> {
   node: Node<D, T>;
@@ -14,7 +15,7 @@ export interface ResourceNodeData {
   speed?: number;
 }
 
-export function ResourceNode({ data }: NodeProps<ResourceNodeData>) {
+export function ResourceNode({ data, selected }: NodeProps<ResourceNodeData>) {
   const { resourceId, speed } = data;
   const rInfo =
     resourceId &&
@@ -29,8 +30,11 @@ export function ResourceNode({ data }: NodeProps<ResourceNodeData>) {
   return (
     <>
       <div
-        className='flex flex-col items-center justify-center rounded-md px-4 py-1 text-primary-content'
-        style={{ backgroundColor: defaultNodeColor.resource }}
+        className='flex flex-col items-center justify-center rounded-md px-4 py-1 text-primary-content outline-offset-2'
+        style={{
+          backgroundColor: (selected ? defaultNodeFocusedColor : defaultNodeColor).resource,
+          outline: selected ? '2px solid ' + defaultNodeColor.resource : 'none',
+        }}
       >
         {rInfo ? (
           <>
@@ -42,7 +46,11 @@ export function ResourceNode({ data }: NodeProps<ResourceNodeData>) {
           <p className='text-center font-semibold'>Unset</p>
         )}
       </div>
-      <Handle type='source' style={{ backgroundColor: defaultNodeColor.resource }} position={Position.Right} />
+      <Handle
+        type='source'
+        style={{ backgroundColor: (selected ? defaultNodeFocusedColor : defaultNodeColor).resource }}
+        position={Position.Right}
+      />
     </>
   );
 }
@@ -107,7 +115,7 @@ export interface ItemNodeData {
   speed?: number;
 }
 
-export function ItemNode({ data }: NodeProps<ItemNodeData>) {
+export function ItemNode({ data, selected }: NodeProps<ItemNodeData>) {
   const { itemId, speed } = data;
   const itemInfo =
     itemId &&
@@ -121,11 +129,18 @@ export function ItemNode({ data }: NodeProps<ItemNodeData>) {
 
   return (
     <>
-      <Handle type='target' position={Position.Left} style={{ backgroundColor: defaultNodeColor.item }} />
+      <Handle
+        type='target'
+        position={Position.Left}
+        style={{ backgroundColor: (selected ? defaultNodeFocusedColor : defaultNodeColor).item }}
+      />
       {
         <div
-          className='flex flex-col items-center justify-center rounded-md px-4 py-1 text-primary-content'
-          style={{ backgroundColor: defaultNodeColor.item }}
+          className='flex flex-col items-center justify-center rounded-md px-4 py-1 text-primary-content outline-offset-2'
+          style={{
+            backgroundColor: (selected ? defaultNodeFocusedColor : defaultNodeColor).item,
+            outline: selected ? '2px solid ' + defaultNodeColor.item : 'none',
+          }}
         >
           {itemInfo ? (
             <>
@@ -138,7 +153,11 @@ export function ItemNode({ data }: NodeProps<ItemNodeData>) {
           )}
         </div>
       }
-      <Handle type='source' position={Position.Right} style={{ backgroundColor: defaultNodeColor.item }} />
+      <Handle
+        type='source'
+        position={Position.Right}
+        style={{ backgroundColor: (selected ? defaultNodeFocusedColor : defaultNodeColor).item }}
+      />
     </>
   );
 }
@@ -222,7 +241,7 @@ export interface RecipeNodeData {
   qty?: number;
 }
 
-export function RecipeNode({ data }: NodeProps<RecipeNodeData>) {
+export function RecipeNode({ data, selected }: NodeProps<RecipeNodeData>) {
   const { recipeId, machineId, clockspeeds = 1, qty } = data;
   const recipeInfo = useDocs(({ recipes }) => (recipeId ? recipes[recipeId] : undefined), [recipeId]);
   const machineInfo = useDocs(
@@ -233,10 +252,17 @@ export function RecipeNode({ data }: NodeProps<RecipeNodeData>) {
 
   return (
     <>
-      <Handle type='target' position={Position.Left} style={{ backgroundColor: defaultNodeColor.recipe }} />
+      <Handle
+        type='target'
+        position={Position.Left}
+        style={{ backgroundColor: (selected ? defaultNodeFocusedColor : defaultNodeColor).recipe }}
+      />
       <div
-        className='flex flex-col items-center justify-center rounded-md px-4 py-1 text-primary-content'
-        style={{ backgroundColor: defaultNodeColor.recipe }}
+        className='flex flex-col items-center justify-center rounded-md px-4 py-1 text-primary-content outline-offset-2'
+        style={{
+          backgroundColor: (selected ? defaultNodeFocusedColor : defaultNodeColor).recipe,
+          outline: selected ? '2px solid ' + defaultNodeColor.recipe : 'none',
+        }}
       >
         {recipeInfo ? (
           <p className='text-center font-semibold'>{recipeInfo.displayName}</p>
@@ -251,7 +277,11 @@ export function RecipeNode({ data }: NodeProps<RecipeNodeData>) {
           <p className='text-center font-semibold'>Unset</p>
         )}
       </div>
-      <Handle type='source' position={Position.Right} style={{ backgroundColor: defaultNodeColor.recipe }} />
+      <Handle
+        type='source'
+        position={Position.Right}
+        style={{ backgroundColor: (selected ? defaultNodeFocusedColor : defaultNodeColor).recipe }}
+      />
     </>
   );
 }
@@ -384,7 +414,7 @@ const logisticNames = {
   merger: 'Merger',
 } as const;
 
-export function LogisticNode({ id, data }: NodeProps<LogisticNodeData>) {
+export function LogisticNode({ id, data, selected }: NodeProps<LogisticNodeData>) {
   const updateNodeInternals = useUpdateNodeInternals();
   const { type = 'splitter', rules } = data;
   const isSplitter = type.startsWith('splitter');
@@ -403,26 +433,55 @@ export function LogisticNode({ id, data }: NodeProps<LogisticNodeData>) {
   if (!isSplitter) {
     return (
       <>
-        <Handle id='left' type='target' position={Position.Left} style={{ backgroundColor: defaultNodeColor.logistic, top: '25%' }} />
-        <Handle id='center' type='target' position={Position.Left} style={{ backgroundColor: defaultNodeColor.logistic, top: '50%' }} />
-        <Handle id='right' type='target' position={Position.Left} style={{ backgroundColor: defaultNodeColor.logistic, top: '75%' }} />
+        <Handle
+          id='left'
+          type='target'
+          position={Position.Left}
+          style={{ backgroundColor: (selected ? defaultNodeFocusedColor : defaultNodeColor).logistic, top: '25%' }}
+        />
+        <Handle
+          id='center'
+          type='target'
+          position={Position.Left}
+          style={{ backgroundColor: (selected ? defaultNodeFocusedColor : defaultNodeColor).logistic, top: '50%' }}
+        />
+        <Handle
+          id='right'
+          type='target'
+          position={Position.Left}
+          style={{ backgroundColor: (selected ? defaultNodeFocusedColor : defaultNodeColor).logistic, top: '75%' }}
+        />
         <div
-          className='min-h-16 gap-1 rounded-md px-4 py-1 pt-5 text-primary-content'
-          style={{ backgroundColor: defaultNodeColor.logistic }}
+          className='min-h-16 gap-1 rounded-md px-4 py-1 pt-5 text-primary-content outline-offset-2'
+          style={{
+            backgroundColor: (selected ? defaultNodeFocusedColor : defaultNodeColor).logistic,
+            outline: selected ? '2px solid ' + defaultNodeColor.logistic : 'none',
+          }}
         >
           <p className='row-span-3 h-min text-center font-semibold'>{logisticNames[type]}</p>
         </div>
-        <Handle type='source' position={Position.Right} style={{ backgroundColor: defaultNodeColor.logistic }} />
+        <Handle
+          type='source'
+          position={Position.Right}
+          style={{ backgroundColor: (selected ? defaultNodeFocusedColor : defaultNodeColor).logistic }}
+        />
       </>
     );
   }
 
   return (
     <>
-      <Handle type='target' position={Position.Left} style={{ backgroundColor: defaultNodeColor.logistic }} />
+      <Handle
+        type='target'
+        position={Position.Left}
+        style={{ backgroundColor: (selected ? defaultNodeFocusedColor : defaultNodeColor).logistic }}
+      />
       <div
-        className='grid min-h-16 auto-cols-fr grid-cols-1 grid-rows-3 place-items-center gap-1 rounded-md px-4 py-1 text-primary-content'
-        style={{ backgroundColor: defaultNodeColor.logistic }}
+        className='grid min-h-16 auto-cols-fr grid-cols-1 grid-rows-3 place-items-center gap-1 rounded-md px-4 py-1 text-primary-content outline-offset-2'
+        style={{
+          backgroundColor: (selected ? defaultNodeFocusedColor : defaultNodeColor).logistic,
+          outline: selected ? '2px solid ' + defaultNodeColor.logistic : 'none',
+        }}
       >
         <p className='row-span-3 h-min text-center font-semibold'>{logisticNames[type]}</p>
         {isSplitter && type !== 'splitter' && (
@@ -433,9 +492,24 @@ export function LogisticNode({ id, data }: NodeProps<LogisticNodeData>) {
           </>
         )}
       </div>
-      <Handle id='left' type='source' position={Position.Right} style={{ backgroundColor: defaultNodeColor.logistic, top: '25%' }} />
-      <Handle id='center' type='source' position={Position.Right} style={{ backgroundColor: defaultNodeColor.logistic, top: '50%' }} />
-      <Handle id='right' type='source' position={Position.Right} style={{ backgroundColor: defaultNodeColor.logistic, top: '75%' }} />
+      <Handle
+        id='left'
+        type='source'
+        position={Position.Right}
+        style={{ backgroundColor: (selected ? defaultNodeFocusedColor : defaultNodeColor).logistic, top: '25%' }}
+      />
+      <Handle
+        id='center'
+        type='source'
+        position={Position.Right}
+        style={{ backgroundColor: (selected ? defaultNodeFocusedColor : defaultNodeColor).logistic, top: '50%' }}
+      />
+      <Handle
+        id='right'
+        type='source'
+        position={Position.Right}
+        style={{ backgroundColor: (selected ? defaultNodeFocusedColor : defaultNodeColor).logistic, top: '75%' }}
+      />
     </>
   );
 }
@@ -452,7 +526,7 @@ export function LogisticNodeDataEditor(props: NodeDataEditorProps<LogisticNodeDa
         </div>
         <select
           id='type'
-          className='select select-bordered w-full'
+          className='select select-bordered select-sm w-full'
           value={type}
           onChange={e => updateNode({ ...node, data: { ...node.data, type: e.target.value as LogisticNodeData['type'] } })}
         >
@@ -483,6 +557,10 @@ export const defaultNodeColor = {
   recipe: '#F6AD55',
   logistic: '#71DA8F',
 } satisfies Record<NodeTypeKeys, string>;
+
+export const defaultNodeFocusedColor = Object.fromEntries(
+  Object.entries(defaultNodeColor).map(([k, v]) => [k, getFocusedColor(v)]),
+) as Record<NodeTypeKeys, string>;
 
 export const nodeEditors = {
   item: ItemNodeDataEditor,
