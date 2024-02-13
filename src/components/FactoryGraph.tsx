@@ -1,9 +1,8 @@
 // Reactflow custom nodes
 import { useRef, useEffect, type ComponentType, useMemo } from 'react';
 import type { NodeProps, Node } from 'reactflow';
-import { Handle, Position, useReactFlow, useUpdateNodeInternals } from 'reactflow';
+import { Handle, Position, useUpdateNodeInternals } from 'reactflow';
 import { useDocs } from '../context/DocsContext';
-import Select from 'react-select';
 
 interface NodeDataEditorProps<D extends Record<string, any>, T extends string | undefined = string | undefined> {
   node: Node<D, T>;
@@ -19,10 +18,13 @@ export function ResourceNode({ data }: NodeProps<ResourceNodeData>) {
   const { resourceId, speed } = data;
   const rInfo =
     resourceId &&
-    useDocs(({ resources }) => {
-      const resource = resources[resourceId];
-      return { imgSrc: resource?.iconPath ?? null, itemName: resource?.displayName ?? 'Unknown' };
-    });
+    useDocs(
+      ({ resources }) => {
+        const resource = resources[resourceId];
+        return { imgSrc: resource?.iconPath ?? null, itemName: resource?.displayName ?? 'Unknown' };
+      },
+      [resourceId],
+    );
 
   return (
     <>
@@ -46,6 +48,7 @@ export function ResourceNode({ data }: NodeProps<ResourceNodeData>) {
 }
 
 export function ResourceNodeDataEditor(props: NodeDataEditorProps<ResourceNodeData, 'resource'>) {
+  const dropdownRef = useRef<HTMLDetailsElement>(null);
   const resourceInfos = useDocs(d => d.resources);
   const options = useMemo(
     () => Object.values(resourceInfos).map(({ key, displayName }) => ({ value: key, label: displayName })),
@@ -55,28 +58,43 @@ export function ResourceNodeDataEditor(props: NodeDataEditorProps<ResourceNodeDa
 
   return (
     <>
-      <label htmlFor='resourceId' className='form-control w-full max-w-xs'>
+      <label htmlFor='resourceId' className='form-control w-full'>
         <div className='label'>
           <span className='label-text'>Resource: </span>
         </div>
-        <Select
-          id='resourceId'
-          options={options}
-          isClearable
-          isSearchable
-          menuPlacement='top'
-          onChange={e => updateNode({ ...node, data: { ...node.data, resourceId: e?.value } })}
-          value={{
-            value: node.data.resourceId,
-            label: (node.data.resourceId && resourceInfos[node.data.resourceId]?.displayName) ?? 'Unset',
-          }}
-        />
+        <details ref={dropdownRef} className='dropdown dropdown-top w-full'>
+          <summary className='btn btn-sm btn-block'>
+            {(node.data.resourceId && resourceInfos[node.data.resourceId].displayName) ?? 'Unset'}
+          </summary>
+          <ul className='menu dropdown-content menu-sm z-10 max-h-52 w-56 overflow-y-scroll rounded-box bg-base-200 p-2 shadow-sm'>
+            {options.map(({ value, label }) => (
+              <li key={value}>
+                <button
+                  className='btn btn-sm btn-block'
+                  type='button'
+                  onClick={() => {
+                    updateNode({ ...node, data: { ...node.data, resourceId: value } });
+                    dropdownRef.current?.removeAttribute('open');
+                  }}
+                >
+                  {label}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </details>
       </label>
-      <label htmlFor='speed' className='form-control w-full max-w-xs'>
+      <label htmlFor='speed' className='form-control w-full'>
         <div className='label'>
           <span className='label-text'>Speed: </span>
         </div>
-        <input id='speed' type='number' defaultValue={node.data.speed} />
+        <input
+          id='speed'
+          type='number'
+          className='input input-bordered appearance-none'
+          defaultValue={node.data.speed}
+          onChange={e => updateNode({ ...node, data: { ...node.data, speed: +e.target.value } })}
+        />
       </label>
     </>
   );

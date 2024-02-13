@@ -190,18 +190,12 @@ function NodeDataEditorPanel({ selectedNodeId }: NodeDataEditorPanelProps) {
   }
   return (
     <Panel position='bottom-right'>
-      <div className='w-48 rounded-md bg-base-100 p-2 shadow-lg first:rounded-t-md last:rounded-b-md [&>*]:w-full '>
+      <div className='w-64 rounded-md bg-base-100 p-2 shadow-lg first:rounded-t-md last:rounded-b-md [&>*]:w-full '>
         <h3 className='whitespace-nowrap font-bold'>Node Property</h3>
         <hr className='mt-1 pt-2' />
         <ResourceNodeDataEditor
           node={selectedNode}
-          updateNode={u =>
-            rfInstance.setNodes(nds => {
-              const i = nds.findIndex(n => n.id === selectedNode.id);
-              if (i === -1) return nds;
-              return [...nds.slice(0, i), { ...nds[i], ...u }, ...nds.slice(i + 1)];
-            })
-          }
+          updateNode={u => rfInstance.setNodes(nds => nds.map(n => (n.id === u.id ? { ...n, ...u } : n)))}
         />
       </div>
     </Panel>
