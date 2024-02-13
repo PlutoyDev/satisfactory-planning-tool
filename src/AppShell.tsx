@@ -136,9 +136,7 @@ function SidebarLink(props: SidebarLinkProps) {
   const [isActive] = useRoute(props.href);
   return (
     <Link href={props.href} className={`menu-item ${isActive ? 'active' : ''}`}>
-      <a>
-        <SidebarButton {...btnProps} />
-      </a>
+      <SidebarButton {...btnProps} />
     </Link>
   );
 }
