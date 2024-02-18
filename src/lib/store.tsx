@@ -1,8 +1,9 @@
 // Production Line Context.
-// This context is used manage the state of the production line.
+// This context is used manage the state of the production line.\
+import type { DragEvent } from 'react';
 import { createStore } from 'zustand';
 import type { useLocation } from 'wouter';
-import { Node, Edge, Viewport, OnNodesChange, OnEdgesChange, OnConnect } from 'reactflow';
+import { Node, Edge, Viewport, OnNodesChange, OnEdgesChange, OnConnect, ReactFlowInstance, OnSelectionChangeFunc } from 'reactflow';
 import { nanoid } from 'nanoid';
 import {
   loadProductionLineFromIdb,
@@ -10,6 +11,7 @@ import {
   saveFullProductionLineToIdb,
   saveProductionLineInfosToIdb,
 } from './productionLineDb';
+import { NodeTypeKeys } from '../components/FactoryGraph';
 
 export type SavedNode = Pick<Node, 'id' | 'type' | 'data' | 'position'>;
 export type SavedEdge = Pick<Edge, 'id' | 'type' | 'data' | 'source' | 'target' | 'sourceHandle' | 'targetHandle'>;
@@ -57,20 +59,27 @@ interface AppState {
   nodes: Node[];
   /** Production Line Edges */
   edges: Edge[];
-  /** Viewport */
-  viewport?: Viewport;
-  /** Setter for viewport */
-  setViewport: (viewport: Viewport | undefined) => void;
+  /** Reactflow Instance */
+  rfInstance?: ReactFlowInstance;
+  /** Setter for reactflow instance */
+  setRfInstance: (instance: ReactFlowInstance) => void;
 
   /** Load a production line */
   loadProductionLineFromIdb: (id: string) => void;
   /** Save the production line to IndexedDB */
   saveFullProductionLineToIdb: () => void;
 
+  selNode?: Node;
+  selEdge?: Edge;
+
   // Reactflow callbacks
   onNodesChange: OnNodesChange;
   onEdgesChange: OnEdgesChange;
   onConnect: OnConnect;
+  onSelectionChange: OnSelectionChangeFunc;
+
+  // Reactflow div callbacks
+  onDrop: (event: DragEvent<HTMLDivElement>) => void;
 }
 
 export function createApplicaionStore(navigate: NavigateFn) {
@@ -98,9 +107,7 @@ export function createApplicaionStore(navigate: NavigateFn) {
     selInfo: undefined,
     nodes: [],
     edges: [],
-    viewport: undefined,
-    setViewport: viewport => set({ viewport }),
-
+    setRfInstance: rfInstance => set({ rfInstance }),
     loadProductionLineFromIdb: id => {
       set({ loading: 'productionLine' });
       loadProductionLineFromIdb(id)
@@ -109,7 +116,8 @@ export function createApplicaionStore(navigate: NavigateFn) {
     },
     saveFullProductionLineToIdb: () => {
       set({ saving: 'productionLine' });
-      const { selInfo, nodes, edges, viewport } = get();
+      const { selInfo, nodes, edges, rfInstance } = get();
+      const viewport = rfInstance?.getViewport();
       saveFullProductionLineToIdb(selInfo!, nodes, edges, viewport)
         .then(() => set({ saving: false }))
         .catch(error => set({ error }));
@@ -227,6 +235,31 @@ export function createApplicaionStore(navigate: NavigateFn) {
           },
         ],
       });
+    },
+    onDrop: e => {
+      e.preventDefault();
+      const { nodes, rfInstance } = get();
+      const type = e.dataTransfer.getData('application/reactflow') as NodeTypeKeys;
+      if (!type || !rfInstance) {
+        return;
+      }
+      const position = rfInstance.screenToFlowPosition({ x: e.clientX, y: e.clientY });
+      set({ nodes: [...nodes, { id: nanoid(), type, position, data: {} }] });
+    },
+    onSelectionChange: ({ nodes, edges }) => {
+      const { selNode, selEdge } = get();
+      if (nodes.length === 0 && selNode) {
+        set({ selNode: undefined });
+      }
+      if (edges.length === 0 && selEdge) {
+        set({ selEdge: undefined });
+      }
+      if (nodes.length === 1 && !selNode) {
+        set({ selNode: nodes[0] });
+      }
+      if (edges.length === 1 && !selEdge) {
+        set({ selEdge: edges[0] });
+      }
     },
   }));
 }
