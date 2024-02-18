@@ -1,9 +1,8 @@
 // Production Line Context.
-// This context is used manage the state of the production line.\
-import type { DragEvent } from 'react';
-import { createStore } from 'zustand';
-import type { useLocation } from 'wouter';
-import { Node, Edge, Viewport, OnNodesChange, OnEdgesChange, OnConnect, ReactFlowInstance, OnSelectionChangeFunc } from 'reactflow';
+// This context is used manage the state of the production line.
+import { createContext, useRef, useContext } from 'react';
+import { createStore, useStore } from 'zustand';
+import { useLocation } from 'wouter';
 import { nanoid } from 'nanoid';
 import {
   loadProductionLineFromIdb,
@@ -11,7 +10,10 @@ import {
   saveFullProductionLineToIdb,
   saveProductionLineInfosToIdb,
 } from './productionLineDb';
-import { NodeTypeKeys } from '../components/FactoryGraph';
+
+import type { DragEvent } from 'react';
+import type { Node, Edge, Viewport, OnNodesChange, OnEdgesChange, OnConnect, ReactFlowInstance, OnSelectionChangeFunc } from 'reactflow';
+import type { NodeTypeKeys } from '../components/FactoryGraph';
 
 export type SavedNode = Pick<Node, 'id' | 'type' | 'data' | 'position'>;
 export type SavedEdge = Pick<Edge, 'id' | 'type' | 'data' | 'source' | 'target' | 'sourceHandle' | 'targetHandle'>;
@@ -262,4 +264,35 @@ export function createApplicaionStore(navigate: NavigateFn) {
       }
     },
   }));
+}
+
+type ProductionLineStore = ReturnType<typeof createApplicaionStore>;
+
+// The production line context
+const ProductionLineStoreContext = createContext<ProductionLineStore>(null!);
+
+// The production line provider
+export function ProductionLineStoreProvider({ children }: { children: React.ReactNode }) {
+  const navigate = useLocation()[1];
+  const storeRef = useRef<ProductionLineStore>();
+  if (!storeRef.current) {
+    storeRef.current = createApplicaionStore(navigate);
+  }
+  return <ProductionLineStoreContext.Provider value={storeRef.current}>{children}</ProductionLineStoreContext.Provider>;
+}
+
+// The production line hook
+export function useProductionLineStore(): AppState;
+export function useProductionLineStore<T>(selector: (state: AppState) => T): T;
+
+export function useProductionLineStore(selector?: (state: AppState) => any) {
+  const store = useContext(ProductionLineStoreContext);
+  if (!store) {
+    throw new Error('useProductionLine must be used within a ProductionLineProvider');
+  }
+  if (!selector) {
+    return useStore(store);
+  } else {
+    return useStore(store, selector);
+  }
 }
