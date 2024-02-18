@@ -1,21 +1,14 @@
 // Main Entry Point for the App
-import { Route, Link, useRoute, useLocation } from 'wouter';
-import { useCallback, useEffect, useState } from 'react';
+import { Route, Link, useRoute } from 'wouter';
+import { useState } from 'react';
 import { HomeIcon, ChevronDoubleRightIcon, ChevronDoubleLeftIcon, PlusIcon, QuestionMarkCircleIcon } from '@heroicons/react/24/outline';
 import Home from './pages/Home';
 import ProductionGraph, { routePattern } from './pages/ProductionGraph';
 import AppLogo from './components/AppLogo';
-import { nanoid } from 'nanoid';
 import { ErrorBoundary, FallbackProps } from 'react-error-boundary';
 import { DocsProvider } from './context/DocsContext';
 import { ReactFlowProvider } from 'reactflow';
-import { ProductionLineInfoProvider, useProductionLineInfos } from './context/ProdLineInfoContext';
-
-interface ProductionLineInfo {
-  id: string;
-  title: string;
-  icon: string;
-}
+import { ProductionLineStoreProvider, useProductionLineStore } from './lib/store';
 
 function ErrorFallback({ error }: FallbackProps) {
   return (
@@ -28,9 +21,9 @@ function ErrorFallback({ error }: FallbackProps) {
 
 export function AppShell() {
   return (
-    <div>
-      <ProductionLineInfoProvider>
-        <ErrorBoundary FallbackComponent={ErrorFallback}>
+    <ErrorBoundary FallbackComponent={ErrorFallback}>
+      <div>
+        <ProductionLineStoreProvider>
           <DocsProvider LoaderComponent={<div className='skeleton h-screen w-screen' />}>
             <div className='p absolute z-0 h-full w-full pl-20 pr-4 pt-2'>
               <Route path='/'>
@@ -44,14 +37,18 @@ export function AppShell() {
             </div>
             <Sidebar />
           </DocsProvider>
-        </ErrorBoundary>
-      </ProductionLineInfoProvider>
-    </div>
+        </ProductionLineStoreProvider>
+      </div>
+    </ErrorBoundary>
   );
 }
 
 function Sidebar() {
-  const { productionLineInfos, createPl } = useProductionLineInfos();
+  const { productionLineInfos, createProductionLine, loadProductionLineFromIdb } = useProductionLineStore(s => ({
+    productionLineInfos: s.productionLineInfos,
+    createProductionLine: s.createProductionLine,
+    loadProductionLineFromIdb: s.loadProductionLineFromIdb,
+  }));
   const [expanded, setExpanded] = useState(false);
   const [isAtHome] = useRoute('/');
 
@@ -70,17 +67,15 @@ function Sidebar() {
       )}
       {/* Sidebar */}
       <aside className='relative z-50 h-full w-min bg-clip-border'>
-        <nav className='flex min-h-full min-w-16 flex-col items-center bg-base-100 py-4 text-base-content'>
+        <nav className='flex min-h-full min-w-16 flex-col items-center bg-base-100 py-4 pl-1 text-base-content'>
           <div className='h-14'>
             {
               // Maintain same height when expanded, expanded shows app logo, collapsed shows expand button
               expanded ? (
                 <Link href='/'>
-                  <a>
-                    <button className='btn btn-ghost mt-1' type='button'>
-                      <AppLogo />
-                    </button>
-                  </a>
+                  <button className='btn btn-ghost mt-1' type='button'>
+                    <AppLogo />
+                  </button>
                 </Link>
               ) : (
                 <>
@@ -90,17 +85,23 @@ function Sidebar() {
                     icon={<ChevronDoubleRightIcon className='h-8 w-8 text-primary' />}
                     expanded={expanded}
                   />
-                  <SidebarLink key='home' title='Home' href='/' icon={<HomeIcon className='h-8 w-8 text-primary' />} expanded={expanded} />
+                  <SidebarButton
+                    title='Home'
+                    onclick={() => setExpanded(true)}
+                    icon={<HomeIcon className='h-8 w-8 text-primary' />}
+                    expanded={expanded}
+                    isActive={isAtHome}
+                  />
                 </>
               )
             }
           </div>
           <div className='divider'>{expanded ? 'Production Lines' : null}</div>
           {productionLineInfos.map(info => (
-            <SidebarLink
+            <SidebarButton
               key={info.id}
               title={info.title}
-              href={`/production-lines/${info.id}`}
+              onclick={() => loadProductionLineFromIdb(info.id)}
               icon={
                 info.icon === '???' ? (
                   <p className='h-8 w-8 text-2xl font-extrabold'>?</p>
@@ -114,7 +115,7 @@ function Sidebar() {
           <SidebarButton
             key='create'
             title='Create new'
-            onclick={() => createPl()}
+            onclick={() => createProductionLine()}
             icon={<PlusIcon className='inline-block h-8 w-8 text-primary' />}
             expanded={expanded}
           />
@@ -146,14 +147,15 @@ interface SidebarButtonProps {
   onclick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
   icon: JSX.Element;
   expanded: boolean;
+  isActive?: boolean;
 }
 
 function SidebarButton(props: SidebarButtonProps) {
-  const { title, onclick, icon, expanded } = props;
+  const { title, onclick, icon, expanded, isActive } = props;
 
   return (
     <div className='tooltip tooltip-right' data-tip={title}>
-      <button className='btn btn-ghost btn-sm flex-nowrap' onClick={onclick} type='button'>
+      <button className={`btn btn-ghost btn-sm flex-nowrap bg-opacity-30 ${isActive ? 'bg-black' : ''}`} onClick={onclick} type='button'>
         <span className='icon'>{icon}</span>
         {
           // Only show the title if the sidebar is expanded
