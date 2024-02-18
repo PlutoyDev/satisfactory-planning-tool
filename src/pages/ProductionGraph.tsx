@@ -1,9 +1,6 @@
 import { useEffect, useRef } from 'react';
-import { useRoute, useLocation } from 'wouter';
 import { useState, useCallback } from 'react';
-import { ReactFlow, Panel, Background, addEdge, applyEdgeChanges, applyNodeChanges, useReactFlow } from 'reactflow';
-import type { Node, Edge, OnConnect, OnNodesChange, OnEdgesChange, PanelPosition } from 'reactflow';
-import useLegacyEffect from '../hooks/useLegacyEffect';
+import { ReactFlow, Panel, Background, useReactFlow } from 'reactflow';
 import {
   ArrowsPointingOutIcon,
   ArrowsPointingInIcon,
@@ -21,85 +18,43 @@ import {
   type FactoryNodeData,
   type FactoryNodeProperties,
 } from '../components/FactoryGraph';
-import { loadProductionLine, saveProductionLine } from '../lib/ProductionLine';
+import { saveProductionLine } from '../lib/ProductionLine';
 import { useDocs } from '../context/DocsContext';
-import { nanoid } from 'nanoid';
-import { ProductionLineInfo, useProductionLineInfos } from '../context/ProdLineInfoContext';
-import debounce from 'lodash/debounce';
+import { useProductionLineStore } from '../lib/store';
 
-export const routePattern = '/production-lines/:id' as const;
+export const routePattern = '/production-line/:id' as const;
 
 export function ProductionGraph() {
-  const [, navigate] = useLocation();
-  const [, params] = useRoute(routePattern);
-  const docs = useDocs();
-
-  const [loading, setLoading] = useState(true);
-  const [saved, setSaved] = useState(true);
-  const [saving, setSaving] = useState(false);
-
-  const [nodes, setNodes] = useState<Node[]>([]);
-  const [edges, setEdges] = useState<Edge[]>([]);
-  const rfInstance = useReactFlow<FactoryNodeData>();
-  const [selectedNodeId, setSelectedNodeId] = useState(undefined as string | undefined);
-
+  // Full screen
   const elRef = useRef<HTMLDivElement | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-  //ReactFlow handlers
-  const onNodesChange: OnNodesChange = useCallback(changes => (setNodes(nds => applyNodeChanges(changes, nds)), setSaved(false)), []);
-  const onEdgesChange: OnEdgesChange = useCallback(changes => (setEdges(eds => applyEdgeChanges(changes, eds)), setSaved(false)), []);
-  const onConnect: OnConnect = useCallback(connection => (setEdges(edges => addEdge(connection, edges)), setSaved(false)), []);
-  const onDrop = useCallback(
-    (event: React.DragEvent<HTMLDivElement>) => {
-      event.preventDefault();
-      const type = event.dataTransfer.getData('application/reactflow') as NodeTypeKeys;
-      if (!type) return;
-      const pos = rfInstance.screenToFlowPosition({ x: event.clientX, y: event.clientY });
-      setNodes(nds => [...nds, { id: nanoid(), type, position: pos, data: {} }]);
-      console.log('Dropped', type, pos);
-    },
-    [rfInstance],
-  );
+  const { loading, nodes, edges, onNodesChange, onEdgesChange, onConnect, onSelectionChange, onDrop, saveFullProductionLineToIdb } =
+    useProductionLineStore();
 
-  useLegacyEffect(() => {
-    loadProductionLine({ prodLineId: params?.id }).then(({ nodes, edges, viewport }) => {
-      setLoading(false);
-      setNodes(nodes);
-      setEdges(edges);
-      setSaved(true);
-      if (viewport) {
-        rfInstance.setViewport(viewport, { duration: 100 });
-      }
-    });
-  }, [params?.id, rfInstance]);
-
-  const save = () => {
-    setSaving(false);
-    saveProductionLine({ prodLineId: params?.id, nodes, edges, viewport: rfInstance.getViewport() }).then(() => {
-      setSaved(true);
-    });
-  };
-
-  const debouncedSave = useCallback(debounce(save, 3000, { maxWait: 10 }), [save]);
-
-  useEffect(() => {
-    if (saved) {
-      return;
-    }
-    setSaving(true);
-    debouncedSave();
-  }, [saved, debouncedSave]);
-
-  if (loading) {
+  if (loading === 'productionLine') {
     return <div className='skeleton h-full w-full' />;
   }
+
+  useEffect(() => {
+    const onFullscreenChange = () => {
+      if (!document.fullscreenElement) {
+        // If user exit fullscreen using the escape key or the browser's UI
+        setIsFullscreen(false);
+      }
+    };
+    document.addEventListener('fullscreenchange', onFullscreenChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', onFullscreenChange);
+    };
+  }, [setIsFullscreen]);
 
   return (
     <div className='h-full w-full bg-base-300' ref={elRef}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
+        onSelectionChange={onSelectionChange}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
@@ -110,8 +65,6 @@ export function ProductionGraph() {
         onDragOver={e => (e.preventDefault(), (e.dataTransfer.dropEffect = 'move'))}
         //Keyboard Props
         deleteKeyCode={['Delete', 'Backspace']}
-        onNodeClick={(_, node) => setSelectedNodeId(node.id)}
-        onPaneClick={() => setSelectedNodeId(undefined)}
       >
         <Panel position='top-center'>
           <div className='flex items-center space-x-2 rounded-sm bg-base-100 p-1 shadow-lg'>
@@ -120,7 +73,7 @@ export function ProductionGraph() {
                 className='btn btn-square btn-ghost btn-sm'
                 type='button'
                 onClick={() => {
-                  saveProductionLine({ prodLineId: params?.id, nodes, edges, viewport: rfInstance.getViewport()! });
+                  saveFullProductionLineToIdb();
                 }}
               >
                 💾
@@ -149,7 +102,7 @@ export function ProductionGraph() {
               </button>
             </div>
             <div className='tooltip tooltip-bottom' data-tip='Test'>
-              <button
+              {/* <button
                 className='btn btn-square btn-ghost btn-sm'
                 type='button'
                 onClick={() => {
@@ -157,13 +110,13 @@ export function ProductionGraph() {
                 }}
               >
                 🧪
-              </button>
+              </button> */}
             </div>
           </div>
         </Panel>
-        <ProductionLineInfoEditPanel prodLineId={params?.id!} isSaving={saving} isSaved={saved} saveFn={save} />
+        {/* <ProductionLineInfoEditPanel prodLineId={params?.id!} isSaving={saving} isSaved={saved} saveFn={save} /> */}
         <NodePickerPanel />
-        <NodeDataEditorPanel selectedNodeId={selectedNodeId} />
+        {/* <NodeDataEditorPanel selectedNodeId={selectedNodeId} /> */}
         <Background />
       </ReactFlow>
     </div>

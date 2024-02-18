@@ -103,7 +103,7 @@ export function createApplicaionStore(navigate: NavigateFn) {
       const newInfo: ProductionLineInfo = { id, title: 'Untitled', icon: '???' };
       const newInfos = [...infos, newInfo];
       get().setProductionLineInfos(newInfos);
-      navigate(`/production-line/${id}`, { replace: true });
+      navigate(`/production-line/${id}`);
     },
 
     selInfo: undefined,
@@ -113,7 +113,10 @@ export function createApplicaionStore(navigate: NavigateFn) {
     loadProductionLineFromIdb: id => {
       set({ loading: 'productionLine' });
       loadProductionLineFromIdb(id)
-        .then(({ info, nodes, edges }) => set({ selInfo: info, nodes, edges, loading: false }))
+        .then(({ info, nodes, edges }) => {
+          set({ selInfo: info, nodes, edges, loading: false, selNode: undefined, selEdge: undefined });
+          navigate(`/production-line/${id}`);
+        })
         .catch(error => set({ error }));
     },
     saveFullProductionLineToIdb: () => {
