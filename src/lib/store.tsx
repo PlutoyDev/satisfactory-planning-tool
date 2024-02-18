@@ -102,8 +102,8 @@ export function createApplicaionStore(navigate: NavigateFn) {
       const infos = get().productionLineInfos;
       const newInfo: ProductionLineInfo = { id, title: 'Untitled', icon: '???' };
       const newInfos = [...infos, newInfo];
-      set({ productionLineInfos: newInfos });
-      navigate(`/production-line/${id}`);
+      get().setProductionLineInfos(newInfos);
+      navigate(`/production-line/${id}`, { replace: true });
     },
 
     selInfo: undefined,
@@ -277,7 +277,6 @@ export function ProductionLineStoreProvider({ children }: { children: React.Reac
   const storeRef = useRef<ProductionLineStore>();
   if (!storeRef.current) {
     storeRef.current = createApplicaionStore(navigate);
-    useStore(storeRef.current, s => s.loadProductionLineInfosFromIdb)();
   }
   return <ProductionLineStoreContext.Provider value={storeRef.current}>{children}</ProductionLineStoreContext.Provider>;
 }

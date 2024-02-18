@@ -1,5 +1,5 @@
 // Main Entry Point for the App
-import { Route, Link, useRoute } from 'wouter';
+import { Route, Link, useRoute, useLocation } from 'wouter';
 import { useState } from 'react';
 import { HomeIcon, ChevronDoubleRightIcon, ChevronDoubleLeftIcon, PlusIcon, QuestionMarkCircleIcon } from '@heroicons/react/24/outline';
 import Home from './pages/Home';
@@ -9,6 +9,7 @@ import { ErrorBoundary, FallbackProps } from 'react-error-boundary';
 import { DocsProvider } from './context/DocsContext';
 import { ReactFlowProvider } from 'reactflow';
 import { ProductionLineStoreProvider, useProductionLineStore } from './lib/store';
+import useLegacyEffect from './hooks/useLegacyEffect';
 
 function ErrorFallback({ error }: FallbackProps) {
   return (
@@ -44,13 +45,21 @@ export function AppShell() {
 }
 
 function Sidebar() {
-  const { productionLineInfos, createProductionLine, loadProductionLineFromIdb } = useProductionLineStore(s => ({
-    productionLineInfos: s.productionLineInfos,
-    createProductionLine: s.createProductionLine,
-    loadProductionLineFromIdb: s.loadProductionLineFromIdb,
-  }));
+  const { productionLineInfos, createProductionLine, loadProductionLineInfosFromIdb, loadProductionLineFromIdb } = useProductionLineStore(
+    s => ({
+      productionLineInfos: s.productionLineInfos,
+      createProductionLine: s.createProductionLine,
+      loadProductionLineInfosFromIdb: s.loadProductionLineInfosFromIdb,
+      loadProductionLineFromIdb: s.loadProductionLineFromIdb,
+    }),
+  );
   const [expanded, setExpanded] = useState(false);
   const [isAtHome] = useRoute('/');
+  const navigate = useLocation()[1];
+
+  useLegacyEffect(() => {
+    loadProductionLineInfosFromIdb();
+  }, []);
 
   return (
     <div className='absolute inline-block h-screen '>
@@ -87,7 +96,7 @@ function Sidebar() {
                   />
                   <SidebarButton
                     title='Home'
-                    onclick={() => setExpanded(true)}
+                    onclick={() => navigate('/')}
                     icon={<HomeIcon className='h-8 w-8 text-primary' />}
                     expanded={expanded}
                     isActive={isAtHome}
