@@ -50,6 +50,9 @@ dependencies:
   wouter:
     specifier: ^3.0.0
     version: 3.0.0(react@18.2.0)
+  zustand:
+    specifier: ^4.5.1
+    version: 4.5.1(@types/react@18.2.55)(immer@10.0.3)(react@18.2.0)
 
 devDependencies:
   '@types/lodash':
@@ -723,7 +726,7 @@ packages:
       classcat: 5.0.4
       react: 18.2.0
       react-dom: 18.2.0(react@18.2.0)
-      zustand: 4.5.0(@types/react@18.2.55)(immer@10.0.3)(react@18.2.0)
+      zustand: 4.5.1(@types/react@18.2.55)(immer@10.0.3)(react@18.2.0)
     transitivePeerDependencies:
       - '@types/react'
       - immer
@@ -739,7 +742,7 @@ packages:
       classcat: 5.0.4
       react: 18.2.0
       react-dom: 18.2.0(react@18.2.0)
-      zustand: 4.5.0(@types/react@18.2.55)(immer@10.0.3)(react@18.2.0)
+      zustand: 4.5.1(@types/react@18.2.55)(immer@10.0.3)(react@18.2.0)
     transitivePeerDependencies:
       - '@types/react'
       - immer
@@ -761,7 +764,7 @@ packages:
       d3-zoom: 3.0.0
       react: 18.2.0
       react-dom: 18.2.0(react@18.2.0)
-      zustand: 4.5.0(@types/react@18.2.55)(immer@10.0.3)(react@18.2.0)
+      zustand: 4.5.1(@types/react@18.2.55)(immer@10.0.3)(react@18.2.0)
     transitivePeerDependencies:
       - '@types/react'
       - immer
@@ -781,7 +784,7 @@ packages:
       d3-zoom: 3.0.0
       react: 18.2.0
       react-dom: 18.2.0(react@18.2.0)
-      zustand: 4.5.0(@types/react@18.2.55)(immer@10.0.3)(react@18.2.0)
+      zustand: 4.5.1(@types/react@18.2.55)(immer@10.0.3)(react@18.2.0)
     transitivePeerDependencies:
       - '@types/react'
       - immer
@@ -799,7 +802,7 @@ packages:
       d3-selection: 3.0.0
       react: 18.2.0
       react-dom: 18.2.0(react@18.2.0)
-      zustand: 4.5.0(@types/react@18.2.55)(immer@10.0.3)(react@18.2.0)
+      zustand: 4.5.1(@types/react@18.2.55)(immer@10.0.3)(react@18.2.0)
     transitivePeerDependencies:
       - '@types/react'
       - immer
@@ -815,7 +818,7 @@ packages:
       classcat: 5.0.4
       react: 18.2.0
       react-dom: 18.2.0(react@18.2.0)
-      zustand: 4.5.0(@types/react@18.2.55)(immer@10.0.3)(react@18.2.0)
+      zustand: 4.5.1(@types/react@18.2.55)(immer@10.0.3)(react@18.2.0)
     transitivePeerDependencies:
       - '@types/react'
       - immer
@@ -2663,8 +2666,8 @@ packages:
     engines: {node: '>= 14'}
     dev: true
 
-  /zustand@4.5.0(@types/react@18.2.55)(immer@10.0.3)(react@18.2.0):
-    resolution: {integrity: sha512-zlVFqS5TQ21nwijjhJlx4f9iGrXSL0o/+Dpy4txAP22miJ8Ti6c1Ol1RLNN98BMib83lmDH/2KmLwaNXpjrO1A==}
+  /zustand@4.5.1(@types/react@18.2.55)(immer@10.0.3)(react@18.2.0):
+    resolution: {integrity: sha512-XlauQmH64xXSC1qGYNv00ODaQ3B+tNPoy22jv2diYiP4eoDKr9LA+Bh5Bc3gplTrFdb6JVI+N4kc1DZ/tbtfPg==}
     engines: {node: '>=12.7.0'}
     peerDependencies:
       '@types/react': '>=16.8'
