@@ -109,10 +109,14 @@ export function createApplicaionStore(navigate: NavigateFn) {
   return createStore<AppState>((set, get) => ({
     productionLineInfos: [],
     setProductionLineInfos: infos => {
+      const selInfo = get().selInfo;
       if (typeof infos === 'function') {
         infos = infos(get().productionLineInfos);
       }
-      set({ productionLineInfos: infos });
+      set({
+        productionLineInfos: infos,
+        selInfo: (selInfo && infos.find(info => info.id === selInfo.id)) || undefined,
+      });
       saveProductionLineInfosToIdb(infos).catch(error => set({ error }));
     },
     loadProductionLineInfosFromIdb: () => {
@@ -176,7 +180,6 @@ export function createApplicaionStore(navigate: NavigateFn) {
       set({ edges: edges.map(e => (e.id === id ? { ...e, data } : e)), isSaved: false });
     },
     onNodesChange: changes => {
-      console.log('onNodesChange', changes);
       const { nodes: eNodes, selNode } = get();
       const changedMap = new Map<string, Node>();
       const removeNodeIds = new Set<string>();
@@ -228,7 +231,6 @@ export function createApplicaionStore(navigate: NavigateFn) {
           }
         }
       }
-      console.log({ changedMap, removeNodeIds });
 
       set({
         nodes: [...changedMap.values(), ...eNodes.filter(n => !removeNodeIds.has(n.id))],
@@ -311,7 +313,7 @@ export function createApplicaionStore(navigate: NavigateFn) {
         return;
       }
       const position = rfInstance.screenToFlowPosition({ x: e.clientX, y: e.clientY });
-      set({ nodes: [...nodes, { id: nanoid(), type, position, data: {} }] });
+      set({ nodes: [...nodes, { id: nanoid(), type, position, data: {}, selected: true }] });
     },
     onSelectionChange: ({ nodes, edges }) => {
       const { selNode, selEdge } = get();
@@ -321,10 +323,10 @@ export function createApplicaionStore(navigate: NavigateFn) {
       if (edges.length === 0 && selEdge) {
         set({ selEdge: undefined });
       }
-      if (nodes.length === 1 && !selNode) {
+      if (nodes.length === 1 && edges.length === 0) {
         set({ selNode: nodes[0] });
       }
-      if (edges.length === 1 && !selEdge) {
+      if (edges.length === 1 && nodes.length === 0) {
         set({ selEdge: edges[0] });
       }
     },

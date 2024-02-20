@@ -194,7 +194,7 @@ function ProductionLineInfoEditPanel() {
     (info: Partial<ProductionLineInfo>) => {
       setProductionLineInfos(pls => pls.map(pl => (pl.id === selInfo?.id ? { ...pl, ...info } : pl)));
     },
-    [setProductionLineInfos],
+    [setProductionLineInfos, selInfo?.id],
   );
   const panelRef = useRef<HTMLDivElement | null>(null);
   const dropdownRef = useRef<HTMLDetailsElement | null>(null);
