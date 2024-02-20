@@ -74,17 +74,18 @@ export function ResourceNodeDataEditor(props: NodeDataEditorProps<ResourceNodeDa
           <summary className='btn btn-sm btn-block'>
             {(node.data.resourceId && resourceInfos[node.data.resourceId].displayName) ?? 'Unset'}
           </summary>
-          <ul className='menu dropdown-content menu-sm z-10 max-h-52 w-56 overflow-y-scroll rounded-box bg-base-200 p-2 shadow-sm'>
+          <ul className='clean-scrollbar menu dropdown-content menu-sm z-10 max-h-52 flex-nowrap overflow-y-scroll rounded-box bg-base-200 p-2 shadow-sm'>
             {options.map(({ value, label }) => (
               <li key={value}>
                 <button
-                  className='btn btn-sm btn-block'
+                  className='btn btn-sm btn-block items-start justify-start'
                   type='button'
                   onClick={() => {
                     updateNode({ ...node, data: { ...node.data, resourceId: value } });
                     dropdownRef.current?.removeAttribute('open');
                   }}
                 >
+                  {resourceInfos[value].iconPath && <img src={resourceInfos[value].iconPath!} alt={label} className='h-6 w-6' />}
                   {label}
                 </button>
               </li>
@@ -198,7 +199,7 @@ export function ItemNodeDataEditor(props: NodeDataEditorProps<ItemNodeData, 'ite
               value={search}
               onChange={e => setSearch(e.target.value)}
             />
-            <ul className='menu menu-horizontal menu-sm h-48 overflow-y-scroll '>
+            <ul className='clean-scrollbar menu menu-horizontal menu-sm h-48 overflow-y-scroll'>
               {filtered.map(({ key, iconPath, displayName }) => (
                 <li className='w-full' key={key}>
                   <button
@@ -237,12 +238,15 @@ export function ItemNodeDataEditor(props: NodeDataEditorProps<ItemNodeData, 'ite
 export interface RecipeNodeData {
   recipeId?: string;
   machineId?: string;
-  clockspeeds?: number;
-  qty?: number;
+  /**
+   * Clockspeeds in  thousandth of a percent
+   *
+   * clockspeed = (thouCs / 100000)%*/
+  thouCs?: number;
 }
 
 export function RecipeNode({ data, selected }: NodeProps<RecipeNodeData>) {
-  const { recipeId, machineId, clockspeeds = 1, qty } = data;
+  const { recipeId, machineId, thouCs = 10000000 } = data;
   const recipeInfo = useDocs(({ recipes }) => (recipeId ? recipes[recipeId] : undefined), [recipeId]);
   const machineInfo = useDocs(
     ({ productionMachines }) =>
@@ -271,7 +275,7 @@ export function RecipeNode({ data, selected }: NodeProps<RecipeNodeData>) {
         )}
         {machineInfo ? (
           <p className='text-center'>
-            {qty ? `${qty}x` : ''} {clockspeeds * 100}% {machineInfo.displayName}
+            {Math.floor(thouCs / 10) / 10000}% {machineInfo.displayName}
           </p>
         ) : (
           <p className='text-center font-semibold'>Unset</p>
@@ -317,7 +321,7 @@ export function RecipeNodeDataEditor(props: NodeDataEditorProps<RecipeNodeData, 
         </div>
         <details ref={recipeDropdownRef} className='dropdown dropdown-top w-full'>
           <summary className='btn btn-sm btn-block'>{recipeInfo ? recipeInfo.displayName : 'Unset'}</summary>
-          <div className='dropdown-content right-0 z-10 w-72 rounded-box bg-base-200 p-2 shadow-sm'>
+          <div className='dropdown-content right-0 z-10 rounded-box bg-base-200 p-2 shadow-sm'>
             <input
               type='text'
               className='input input-sm input-bordered mb-1 w-full'
@@ -325,11 +329,11 @@ export function RecipeNodeDataEditor(props: NodeDataEditorProps<RecipeNodeData, 
               value={search}
               onChange={e => setSearch(e.target.value)}
             />
-            <ul className='menu menu-horizontal menu-sm h-48 overflow-y-scroll '>
+            <ul className='clean-scrollbar menu menu-horizontal menu-sm h-48 overflow-y-scroll '>
               {filteredRecipes.map(({ key, displayName }) => (
                 <li className='w-full' key={key}>
                   <button
-                    className='btn btn-sm btn-block items-start justify-start'
+                    className='btn btn-sm btn-block items-start justify-start whitespace-nowrap'
                     type='button'
                     onClick={e => {
                       if (node.data.machineId) {
@@ -353,11 +357,11 @@ export function RecipeNodeDataEditor(props: NodeDataEditorProps<RecipeNodeData, 
         </div>
         <details ref={machineDropdownRef} className='dropdown dropdown-top w-full'>
           <summary className='btn btn-sm btn-block'>{machineInfo ? machineInfo.displayName : 'Unset'}</summary>
-          <ul className='menu dropdown-content menu-sm z-10 max-h-52 w-56 flex-nowrap overflow-y-scroll rounded-box bg-base-200 p-2 shadow-sm'>
+          <ul className='clean-scrollbar menu dropdown-content menu-sm z-10 max-h-52 flex-nowrap overflow-y-auto rounded-box bg-base-200 p-2 shadow-sm'>
             {Object.values(productionMachines).map(({ key, displayName }) => (
               <li className='w-full' key={key}>
                 <button
-                  className='btn btn-sm btn-block'
+                  className='btn btn-sm btn-block '
                   type='button'
                   onClick={() => {
                     if (recipeInfo && recipeInfo?.producedIn !== key) {
@@ -381,21 +385,10 @@ export function RecipeNodeDataEditor(props: NodeDataEditorProps<RecipeNodeData, 
         <input
           id='clockspeeds'
           type='number'
+          step='0.01'
           className='input input-sm input-bordered appearance-none'
-          defaultValue={node.data.clockspeeds}
-          onChange={e => updateNode({ ...node, data: { ...node.data, clockspeeds: +e.target.value } })}
-        />
-      </label>
-      <label htmlFor='qty' className='form-control w-full'>
-        <div className='label'>
-          <span className='label-text'>Quantity: </span>
-        </div>
-        <input
-          id='qty'
-          type='number'
-          className='input input-sm input-bordered appearance-none'
-          defaultValue={node.data.qty}
-          onChange={e => updateNode({ ...node, data: { ...node.data, qty: +e.target.value } })}
+          defaultValue={node.data.thouCs ? Math.floor(node.data.thouCs / 10) / 10000 : 100}
+          onChange={e => updateNode({ ...node, data: { ...node.data, thouCs: Math.floor(+e.target.value * 10000) * 10 } })}
         />
       </label>
     </>
@@ -477,13 +470,13 @@ export function LogisticNode({ id, data, selected }: NodeProps<LogisticNodeData>
         style={{ backgroundColor: (selected ? defaultNodeFocusedColor : defaultNodeColor).logistic }}
       />
       <div
-        className='grid min-h-16 auto-cols-fr grid-cols-1 grid-rows-3 place-items-center gap-1 rounded-md px-4 py-1 text-primary-content outline-offset-2'
+        className='grid min-h-16 auto-cols-fr grid-cols-2 grid-rows-3 place-items-center gap-1 rounded-md px-4 py-1 text-primary-content outline-offset-2'
         style={{
           backgroundColor: (selected ? defaultNodeFocusedColor : defaultNodeColor).logistic,
           outline: selected ? '2px solid ' + defaultNodeColor.logistic : 'none',
         }}
       >
-        <p className='row-span-3 h-min text-center font-semibold'>{logisticNames[type]}</p>
+        <p className='row-span-3 h-min w-min text-center font-semibold'>{logisticNames[type]}</p>
         {isSplitter && type !== 'splitter' && (
           <>
             <p className='text-center'>Left</p>
