@@ -368,3 +368,9 @@ export function useProductionLineStore(selector?: ((state: AppState) => any) | k
     return useStore(store, selector);
   }
 }
+
+if (import.meta.hot) {
+  import.meta.hot.accept(m => {
+    import.meta.hot!.invalidate('store is not hot-reloadable');
+  });
+}
