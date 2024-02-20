@@ -110,8 +110,8 @@ export async function saveFullProductionLineToIdb(info: ProductionLineInfo, node
     infosStore.put(convertToDbInfo(info, viewport)),
     ...delNodeIds.map(id => nodesStore.delete(id)),
     ...delEdgeIds.map(id => edgesStore.delete(id)),
-    ...nodes.map(node => nodesStore.put(convertToDbNode(node, info.id))),
-    ...edges.map(edge => edgesStore.put(convertToDbEdge(edge, info.id))),
+    ...nodes.map(node => nodesStore.put(convertToDbNode(convertToSavedNode(node), info.id))),
+    ...edges.map(edge => edgesStore.put(convertToDbEdge(convertToSavedEdge(edge), info.id))),
     tx.done,
   ];
 
@@ -123,9 +123,9 @@ export async function saveFullProductionLineToIdb(info: ProductionLineInfo, node
 export type SavePartialParams = {
   prodLineId: string;
   nodesDeleted?: string[];
-  nodesChanged?: SavedNode[];
+  nodesChanged?: Node[];
   edgesDeleted?: string[];
-  edgesChanged?: SavedEdge[];
+  edgesChanged?: Edge[];
 };
 
 export async function savePartialProductionLineToIdb(params: SavePartialParams) {
@@ -137,9 +137,9 @@ export async function savePartialProductionLineToIdb(params: SavePartialParams) 
 
   const promises = [
     ...(nodesDeleted?.map(id => nodesStore.delete(id)) ?? []),
-    ...(nodesChanged?.map(node => nodesStore.put(convertToDbNode(node, params.prodLineId))) ?? []),
+    ...(nodesChanged?.map(node => nodesStore.put(convertToDbNode(convertToSavedNode(node), params.prodLineId))) ?? []),
     ...(edgesDeleted?.map(id => edgesStore.delete(id)) ?? []),
-    ...(edgesChanged?.map(edge => edgesStore.put(convertToDbEdge(edge, params.prodLineId))) ?? []),
+    ...(edgesChanged?.map(edge => edgesStore.put(convertToDbEdge(convertToSavedEdge(edge), params.prodLineId))) ?? []),
     tx.done,
   ];
 

@@ -17,7 +17,7 @@ import type { DragEvent } from 'react';
 import type { Node, Edge, Viewport, OnNodesChange, OnEdgesChange, OnConnect, ReactFlowInstance, OnSelectionChangeFunc } from 'reactflow';
 import type { NodeTypeKeys } from '../components/FactoryGraph';
 import { pick } from 'lodash';
-import { ProductionLineInfo, convertToSavedEdge, convertToSavedNode } from './productionLine';
+import { ProductionLineInfo } from './productionLine';
 
 type NavigateFn = ReturnType<typeof useLocation>[1];
 
@@ -177,9 +177,9 @@ export function createApplicaionStore(navigate: NavigateFn) {
       });
       const { nodeDeleted, nodeChanged, edgeDeleted, edgeChanged } = collectedChanges;
       const nd = Array.from(nodeDeleted);
-      const nc = nodes.filter(n => nodeChanged.has(n.id) && !nodeDeleted.has(n.id)).map(convertToSavedNode);
+      const nc = nodes.filter(n => nodeChanged.has(n.id) && !nodeDeleted.has(n.id));
       const ed = Array.from(edgeDeleted);
-      const ec = edges.filter(e => edgeChanged.has(e.id) && !edgeDeleted.has(e.id)).map(convertToSavedEdge);
+      const ec = edges.filter(e => edgeChanged.has(e.id) && !edgeDeleted.has(e.id));
 
       savePartialProductionLineToIdb({
         prodLineId: selInfo.id,
