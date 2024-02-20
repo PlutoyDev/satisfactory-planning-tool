@@ -5,9 +5,11 @@ import { createStore, useStore } from 'zustand';
 import { useLocation } from 'wouter';
 import { nanoid } from 'nanoid';
 import {
+  SavePartialParams,
   loadProductionLineFromIdb,
   loadProductionLineInfosFromIdb,
   saveFullProductionLineToIdb,
+  savePartialProductionLineToIdb,
   saveProductionLineInfosToIdb,
 } from './productionLineDb';
 
@@ -15,24 +17,9 @@ import type { DragEvent } from 'react';
 import type { Node, Edge, Viewport, OnNodesChange, OnEdgesChange, OnConnect, ReactFlowInstance, OnSelectionChangeFunc } from 'reactflow';
 import type { NodeTypeKeys } from '../components/FactoryGraph';
 import { pick } from 'lodash';
-
-export type SavedNode = Pick<Node, 'id' | 'type' | 'data' | 'position'>;
-export type SavedEdge = Pick<Edge, 'id' | 'type' | 'data' | 'source' | 'target' | 'sourceHandle' | 'targetHandle'>;
-
-export interface SavedProductionLine {
-  info: ProductionLineInfo;
-  nodes: SavedNode[];
-  edges: SavedEdge[];
-  viewport?: Viewport;
-}
+import { ProductionLineInfo, convertToSavedEdge, convertToSavedNode } from './productionLine';
 
 type NavigateFn = ReturnType<typeof useLocation>[1];
-
-export interface ProductionLineInfo {
-  id: string;
-  title: string;
-  icon: string;
-}
 
 interface AppState {
   loading?: false | 'docsJson' | 'infos' | 'productionLine';
@@ -62,12 +49,8 @@ interface AppState {
   selInfo: ProductionLineInfo | undefined;
   /** Production Line Nodes */
   nodes: Node[];
-  /** Setter for the production line nodes*/
-  setNodes: (nodes: Node[] | ((nodes: Node[]) => Node[])) => void;
   /** Production Line Edges */
   edges: Edge[];
-  /** Setter for the production line edges*/
-  setEdges: (edges: Edge[] | ((edges: Edge[]) => Edge[])) => void;
   /** Reactflow Instance */
   rfInstance?: ReactFlowInstance;
   /** Setter for reactflow instance */
@@ -80,6 +63,16 @@ interface AppState {
 
   selNode?: Node;
   selEdge?: Edge;
+
+  collectedChanges: {
+    nodeDeleted: Set<string>;
+    nodeChanged: Set<string>;
+    edgeDeleted: Set<string>;
+    edgeChanged: Set<string>;
+  };
+  partialSave: () => void;
+  deboucingPartialSaveTimeout?: number;
+  deboucedPartialSave: () => void;
 
   /**
    * Update the node data
@@ -133,20 +126,19 @@ export function createApplicaionStore(navigate: NavigateFn) {
       const newInfo: ProductionLineInfo = { id, title: 'Untitled', icon: '???' };
       const newInfos = [...infos, newInfo];
       get().setProductionLineInfos(newInfos);
-      set({ selInfo: newInfo, nodes: [], edges: [], isSaved: true });
+      set({ selInfo: newInfo, nodes: [], edges: [], isSaved: true, loading: false });
     },
-
     selInfo: undefined,
     nodes: [],
-    setNodes: nodes => set({ nodes: typeof nodes === 'function' ? nodes(get().nodes) : nodes, isSaved: false }),
     edges: [],
-    setEdges: edges => set({ edges: typeof edges === 'function' ? edges(get().edges) : edges, isSaved: false }),
     rfInstance: undefined,
     setRfInstance: rfInstance => set({ rfInstance }),
 
     loadProductionLineFromIdb: id => {
+      const { selInfo, nodes, edges, rfInstance } = get();
       set({ loading: 'productionLine' });
-      loadProductionLineFromIdb(id)
+      (selInfo ? saveFullProductionLineToIdb(selInfo!, nodes, edges, rfInstance?.getViewport()) : Promise.resolve())
+        .then(() => loadProductionLineFromIdb(id))
         .then(({ info, nodes, edges }) => {
           set({ selInfo: info, nodes, edges, loading: false, selNode: undefined, selEdge: undefined, isSaved: true });
           navigate(`/production-line/${id}`);
@@ -160,6 +152,54 @@ export function createApplicaionStore(navigate: NavigateFn) {
       saveFullProductionLineToIdb(selInfo!, nodes, edges, viewport)
         .then(() => set({ saving: false, isSaved: true }))
         .catch(error => set({ error }));
+    },
+    collectedChanges: {
+      nodeDeleted: new Set(),
+      nodeChanged: new Set(),
+      edgeDeleted: new Set(),
+      edgeChanged: new Set(),
+    },
+    partialSave: () => {
+      const { selInfo, nodes, edges, collectedChanges } = get();
+      if (!selInfo) {
+        return;
+      }
+      console.log('partialSave', collectedChanges);
+
+      set({
+        saving: 'productionLine',
+        collectedChanges: {
+          nodeDeleted: new Set(),
+          nodeChanged: new Set(),
+          edgeDeleted: new Set(),
+          edgeChanged: new Set(),
+        },
+      });
+      const { nodeDeleted, nodeChanged, edgeDeleted, edgeChanged } = collectedChanges;
+      const nd = Array.from(nodeDeleted);
+      const nc = nodes.filter(n => nodeChanged.has(n.id) && !nodeDeleted.has(n.id)).map(convertToSavedNode);
+      const ed = Array.from(edgeDeleted);
+      const ec = edges.filter(e => edgeChanged.has(e.id) && !edgeDeleted.has(e.id)).map(convertToSavedEdge);
+
+      savePartialProductionLineToIdb({
+        prodLineId: selInfo.id,
+        nodesDeleted: nd.length > 0 ? nd : undefined,
+        nodesChanged: nc.length > 0 ? nc : undefined,
+        edgesDeleted: ed.length > 0 ? ed : undefined,
+        edgesChanged: ec.length > 0 ? ec : undefined,
+      })
+        .then(() => set({ saving: false, isSaved: true }))
+        .catch(error => set({ error }));
+    },
+    deboucingPartialSaveTimeout: undefined,
+    deboucedPartialSave: () => {
+      const { deboucingPartialSaveTimeout, partialSave } = get();
+      console.log('deboucedPartialSave');
+      if (deboucingPartialSaveTimeout) {
+        clearTimeout(deboucingPartialSaveTimeout);
+      }
+      const timeout = setTimeout(partialSave, 10000);
+      set({ deboucingPartialSaveTimeout: timeout });
     },
     updateNodeData: (data, id) => {
       const nodes = get().nodes;
@@ -180,18 +220,20 @@ export function createApplicaionStore(navigate: NavigateFn) {
       set({ edges: edges.map(e => (e.id === id ? { ...e, data } : e)), isSaved: false });
     },
     onNodesChange: changes => {
-      const { nodes: eNodes, selNode } = get();
+      const { nodes: eNodes, selNode, deboucedPartialSave, collectedChanges } = get();
       const changedMap = new Map<string, Node>();
-      const removeNodeIds = new Set<string>();
+      const saveableChangeNodeIds = new Set<string>();
+      const deleteNodeIds = new Set<string>();
 
       for (const change of changes) {
         if (change.type === 'add') {
           changedMap.set(change.item.id, change.item);
+          saveableChangeNodeIds.add(change.item.id);
         } else if (change.type === 'remove') {
-          removeNodeIds.add(change.id);
+          deleteNodeIds.add(change.id);
         } else if (change.type === 'reset') {
-          removeNodeIds.add(change.item.id);
           changedMap.set(change.item.id, change.item);
+          saveableChangeNodeIds.add(change.item.id);
         } else {
           let node = changedMap.get(change.id);
           if (!node) {
@@ -199,7 +241,6 @@ export function createApplicaionStore(navigate: NavigateFn) {
             if (node) {
               node = { ...node }; // Make a copy, the node will be mutated in the next step
               changedMap.set(node.id, node);
-              removeNodeIds.add(node.id);
             } else {
               throw new Error(`Node with id ${change.id} not found`);
             }
@@ -209,6 +250,7 @@ export function createApplicaionStore(navigate: NavigateFn) {
             const { position, positionAbsolute, dragging } = change;
             if (position) {
               node.position = position;
+              saveableChangeNodeIds.add(node.id);
             }
             if (positionAbsolute) {
               node.positionAbsolute = positionAbsolute;
@@ -233,25 +275,33 @@ export function createApplicaionStore(navigate: NavigateFn) {
       }
 
       set({
-        nodes: [...changedMap.values(), ...eNodes.filter(n => !removeNodeIds.has(n.id))],
+        nodes: [...changedMap.values(), ...eNodes.filter(n => !changedMap.has(n.id) && !deleteNodeIds.has(n.id))],
         selNode: selNode && (changedMap.has(selNode?.id) ? changedMap.get(selNode.id) : selNode),
         isSaved: false,
       });
+
+      if (saveableChangeNodeIds.size > 0 || deleteNodeIds.size > 0) {
+        saveableChangeNodeIds.forEach(id => collectedChanges.nodeChanged.add(id));
+        deleteNodeIds.forEach(id => collectedChanges.nodeDeleted.add(id));
+        deboucedPartialSave();
+      }
     },
     onEdgesChange: changes => {
       // const eEdges = get().edges;
-      const { edges: eEdges, selEdge } = get();
+      const { edges: eEdges, selEdge, deboucedPartialSave, collectedChanges } = get();
       const changedMap = new Map<string, Edge>();
+      const saveableChangeEdgeIds = new Set<string>();
       const removeEdgeIds = new Set<string>();
 
       for (const change of changes) {
         if (change.type === 'add') {
           changedMap.set(change.item.id, change.item);
+          saveableChangeEdgeIds.add(change.item.id);
         } else if (change.type === 'remove') {
           removeEdgeIds.add(change.id);
         } else if (change.type === 'reset') {
-          removeEdgeIds.add(change.item.id);
           changedMap.set(change.item.id, change.item);
+          saveableChangeEdgeIds.add(change.item.id);
         } else {
           let edge = changedMap.get(change.id);
           if (!edge) {
@@ -259,7 +309,6 @@ export function createApplicaionStore(navigate: NavigateFn) {
             if (edge) {
               edge = { ...edge }; // Make a copy, the edge will be mutated in the next step
               changedMap.set(edge.id, edge);
-              removeEdgeIds.add(edge.id);
             } else {
               throw new Error(`Edge with id ${change.id} not found`);
             }
@@ -273,13 +322,20 @@ export function createApplicaionStore(navigate: NavigateFn) {
       }
 
       set({
-        edges: [...changedMap.values(), ...eEdges.filter(e => !removeEdgeIds.has(e.id))],
+        edges: [...changedMap.values(), ...eEdges.filter(e => !changedMap.has(e.id) && !removeEdgeIds.has(e.id))],
         selEdge: selEdge && (changedMap.has(selEdge?.id) ? changedMap.get(selEdge.id) : selEdge),
         isSaved: false,
       });
+
+      if (saveableChangeEdgeIds.size > 0 || removeEdgeIds.size > 0) {
+        saveableChangeEdgeIds.forEach(id => collectedChanges.edgeChanged.add(id));
+        removeEdgeIds.forEach(id => collectedChanges.edgeDeleted.add(id));
+        deboucedPartialSave();
+      }
     },
     onConnect: conn => {
-      const eEdges = get().edges;
+      // const eEdges = get().edges;
+      const { edges: eEdges, onEdgesChange } = get();
 
       if (!conn.source || !conn.target) {
         return;
@@ -289,10 +345,10 @@ export function createApplicaionStore(navigate: NavigateFn) {
         return;
       }
 
-      set({
-        edges: [
-          ...eEdges,
-          {
+      onEdgesChange([
+        {
+          type: 'add',
+          item: {
             id: nanoid(),
             type: 'smoothstep',
             data: {},
@@ -301,9 +357,8 @@ export function createApplicaionStore(navigate: NavigateFn) {
             sourceHandle: conn.sourceHandle === null ? undefined : conn.sourceHandle,
             targetHandle: conn.targetHandle === null ? undefined : conn.targetHandle,
           },
-        ],
-        isSaved: false,
-      });
+        },
+      ]);
     },
     onDrop: e => {
       e.preventDefault();

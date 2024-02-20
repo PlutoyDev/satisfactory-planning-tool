@@ -17,9 +17,11 @@ import {
   type NodeDataEditorProps,
 } from '../components/FactoryGraph';
 import { useDocs } from '../context/DocsContext';
-import { ProductionLineInfo, useProductionLineStore } from '../lib/store';
+import { useProductionLineStore } from '../lib/store';
+
 import useLegacyEffect from '../hooks/useLegacyEffect';
-import { useRoute } from 'wouter';
+import { useLocation, useRoute } from 'wouter';
+import { ProductionLineInfo } from '../lib/productionLine';
 
 export const routePattern = '/production-line/:id' as const;
 
@@ -180,6 +182,7 @@ function NodeDataEditorPanel() {
 }
 
 function ProductionLineInfoEditPanel() {
+  const navigate = useLocation()[1];
   const iconPaths = useDocs(
     ({ resources, items }) => [...Object.values(items), ...Object.values(resources)].map(i => i.iconPath).filter(Boolean) as string[],
   );
@@ -268,7 +271,11 @@ function ProductionLineInfoEditPanel() {
                   </button>
                   <button
                     className='btn btn-error btn-sm'
-                    onClick={() => setProductionLineInfos(pls => pls.filter(pl => pl.id !== selInfo.id))}
+                    onClick={() => {
+                      closeDialogRef.current?.close();
+                      setProductionLineInfos(pls => pls.filter(pl => pl.id !== selInfo.id));
+                      navigate('/');
+                    }}
                   >
                     Yes
                   </button>

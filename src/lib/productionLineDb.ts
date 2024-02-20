@@ -1,6 +1,7 @@
 import * as idb from 'idb';
 import type { Node, Edge, Viewport } from 'reactflow';
-import type { ProductionLineInfo, SavedNode, SavedEdge } from './store'; // Type can be circular imported
+import type { ProductionLineInfo, SavedNode, SavedEdge } from './productionLine';
+import { convertToSavedEdge, convertToSavedNode } from './productionLine';
 import omit from 'lodash/omit';
 import pick from 'lodash/pick';
 
@@ -76,17 +77,23 @@ export async function loadProductionLineFromIdb(id: string, db?: Awaited<ReturnT
     db = await openDb();
   }
 
-  const [info, nodes, edges] = await Promise.all([
+  const [combinedInfo, nodes, edges] = await Promise.all([
     db.get('infos', id),
-    db.getAllFromIndex('nodes', 'prodLineId', id).then(nodes => nodes.map(({ prodLineId, ...node }) => node)),
-    db.getAllFromIndex('edges', 'prodLineId', id).then(edges => edges.map(({ prodLineId, ...edge }) => edge)),
+    db.getAllFromIndex('nodes', 'prodLineId', id).then(nds => nds.map(convertFromDbNode)),
+    db.getAllFromIndex('edges', 'prodLineId', id).then(eds => eds.map(convertFromDbEdge)),
   ]);
 
   if (shouldClose) {
     db.close();
   }
 
-  return { info, nodes, edges };
+  if (!combinedInfo) {
+    throw new Error(`Production line with id ${id} not found`);
+  }
+
+  const [info, viewport] = convertFromDbInfo(combinedInfo);
+
+  return { info, nodes, edges, viewport };
 }
 
 export async function saveFullProductionLineToIdb(info: ProductionLineInfo, nodes: Node[], edges: Edge[], viewport?: Viewport) {
@@ -113,3 +120,29 @@ export async function saveFullProductionLineToIdb(info: ProductionLineInfo, node
 }
 
 // TODO: Save Changes instead of full save, to reduce the read and writes to the db
+export type SavePartialParams = {
+  prodLineId: string;
+  nodesDeleted?: string[];
+  nodesChanged?: SavedNode[];
+  edgesDeleted?: string[];
+  edgesChanged?: SavedEdge[];
+};
+
+export async function savePartialProductionLineToIdb(params: SavePartialParams) {
+  const db = await openDb();
+  const tx = db.transaction(['nodes', 'edges'], 'readwrite');
+  const [nodesStore, edgesStore] = [tx.objectStore('nodes'), tx.objectStore('edges')];
+  console.log(params);
+  const { nodesDeleted, nodesChanged, edgesDeleted, edgesChanged } = params;
+
+  const promises = [
+    ...(nodesDeleted?.map(id => nodesStore.delete(id)) ?? []),
+    ...(nodesChanged?.map(node => nodesStore.put(convertToDbNode(node, params.prodLineId))) ?? []),
+    ...(edgesDeleted?.map(id => edgesStore.delete(id)) ?? []),
+    ...(edgesChanged?.map(edge => edgesStore.put(convertToDbEdge(edge, params.prodLineId))) ?? []),
+    tx.done,
+  ];
+
+  await Promise.all(promises);
+  db.close();
+}
