@@ -14,6 +14,7 @@ import {
 import type { DragEvent } from 'react';
 import type { Node, Edge, Viewport, OnNodesChange, OnEdgesChange, OnConnect, ReactFlowInstance, OnSelectionChangeFunc } from 'reactflow';
 import type { NodeTypeKeys } from '../components/FactoryGraph';
+import { pick } from 'lodash';
 
 export type SavedNode = Pick<Node, 'id' | 'type' | 'data' | 'position'>;
 export type SavedEdge = Pick<Edge, 'id' | 'type' | 'data' | 'source' | 'target' | 'sourceHandle' | 'targetHandle'>;
@@ -39,10 +40,12 @@ interface AppState {
   saving?: false | 'infos' | 'productionLine';
   error?: Error | string;
 
+  isSaved?: boolean;
+
   /** Production Line Infos: for the production line list */
   productionLineInfos: ProductionLineInfo[];
   /** Set the production line infos */
-  setProductionLineInfos: (infos: ProductionLineInfo[]) => void;
+  setProductionLineInfos: (infos: ProductionLineInfo[] | ((infos: ProductionLineInfo[]) => ProductionLineInfo[])) => void;
   /** Helper function to load Infos from IndexedDB
    *
    * Call setProductionLineInfos internally
@@ -59,8 +62,12 @@ interface AppState {
   selInfo: ProductionLineInfo | undefined;
   /** Production Line Nodes */
   nodes: Node[];
+  /** Setter for the production line nodes*/
+  setNodes: (nodes: Node[] | ((nodes: Node[]) => Node[])) => void;
   /** Production Line Edges */
   edges: Edge[];
+  /** Setter for the production line edges*/
+  setEdges: (edges: Edge[] | ((edges: Edge[]) => Edge[])) => void;
   /** Reactflow Instance */
   rfInstance?: ReactFlowInstance;
   /** Setter for reactflow instance */
@@ -73,6 +80,20 @@ interface AppState {
 
   selNode?: Node;
   selEdge?: Edge;
+
+  /**
+   * Update the node data
+   * @param data The new data
+   * @param id The id of the node to update. If not provided, the selected node will be updated
+   */
+  updateNodeData: (data: any, id?: string) => void;
+
+  /**
+   * Update the edge data
+   * @param data The new data
+   * @param id The id of the edge to update. If not provided, the selected edge will be updated
+   */
+  updateEdgeData: (data: any, id?: string) => void;
 
   // Reactflow callbacks
   onNodesChange: OnNodesChange;
@@ -88,8 +109,11 @@ export function createApplicaionStore(navigate: NavigateFn) {
   return createStore<AppState>((set, get) => ({
     productionLineInfos: [],
     setProductionLineInfos: infos => {
-      saveProductionLineInfosToIdb(infos);
+      if (typeof infos === 'function') {
+        infos = infos(get().productionLineInfos);
+      }
       set({ productionLineInfos: infos });
+      saveProductionLineInfosToIdb(infos).catch(error => set({ error }));
     },
     loadProductionLineInfosFromIdb: () => {
       set({ loading: 'infos' });
@@ -99,22 +123,28 @@ export function createApplicaionStore(navigate: NavigateFn) {
     },
     createProductionLine: () => {
       const id = nanoid();
+      set({ loading: 'productionLine' });
+      navigate(`/production-line/${id}`);
       const infos = get().productionLineInfos;
       const newInfo: ProductionLineInfo = { id, title: 'Untitled', icon: '???' };
       const newInfos = [...infos, newInfo];
       get().setProductionLineInfos(newInfos);
-      navigate(`/production-line/${id}`);
+      set({ selInfo: newInfo, nodes: [], edges: [], isSaved: true });
     },
 
     selInfo: undefined,
     nodes: [],
+    setNodes: nodes => set({ nodes: typeof nodes === 'function' ? nodes(get().nodes) : nodes, isSaved: false }),
     edges: [],
+    setEdges: edges => set({ edges: typeof edges === 'function' ? edges(get().edges) : edges, isSaved: false }),
+    rfInstance: undefined,
     setRfInstance: rfInstance => set({ rfInstance }),
+
     loadProductionLineFromIdb: id => {
       set({ loading: 'productionLine' });
       loadProductionLineFromIdb(id)
         .then(({ info, nodes, edges }) => {
-          set({ selInfo: info, nodes, edges, loading: false, selNode: undefined, selEdge: undefined });
+          set({ selInfo: info, nodes, edges, loading: false, selNode: undefined, selEdge: undefined, isSaved: true });
           navigate(`/production-line/${id}`);
         })
         .catch(error => set({ error }));
@@ -124,11 +154,30 @@ export function createApplicaionStore(navigate: NavigateFn) {
       const { selInfo, nodes, edges, rfInstance } = get();
       const viewport = rfInstance?.getViewport();
       saveFullProductionLineToIdb(selInfo!, nodes, edges, viewport)
-        .then(() => set({ saving: false }))
+        .then(() => set({ saving: false, isSaved: true }))
         .catch(error => set({ error }));
     },
+    updateNodeData: (data, id) => {
+      const nodes = get().nodes;
+      id = id || get().selNode?.id;
+      if (!id) {
+        return;
+      }
+
+      set({ nodes: nodes.map(n => (n.id === id ? { ...n, data } : n)), isSaved: false });
+    },
+    updateEdgeData: (data, id) => {
+      const edges = get().edges;
+      id = id || get().selEdge?.id;
+      if (!id) {
+        return;
+      }
+
+      set({ edges: edges.map(e => (e.id === id ? { ...e, data } : e)), isSaved: false });
+    },
     onNodesChange: changes => {
-      const eNodes = get().nodes;
+      console.log('onNodesChange', changes);
+      const { nodes: eNodes, selNode } = get();
       const changedMap = new Map<string, Node>();
       const removeNodeIds = new Set<string>();
 
@@ -145,7 +194,8 @@ export function createApplicaionStore(navigate: NavigateFn) {
           if (!node) {
             node = eNodes.find(n => n.id === change.id);
             if (node) {
-              changedMap.set(node.id, { ...node }); // Make a copy, the node will be mutated in the next step
+              node = { ...node }; // Make a copy, the node will be mutated in the next step
+              changedMap.set(node.id, node);
               removeNodeIds.add(node.id);
             } else {
               throw new Error(`Node with id ${change.id} not found`);
@@ -178,11 +228,17 @@ export function createApplicaionStore(navigate: NavigateFn) {
           }
         }
       }
+      console.log({ changedMap, removeNodeIds });
 
-      set({ nodes: [...changedMap.values(), ...eNodes.filter(n => !removeNodeIds.has(n.id))] });
+      set({
+        nodes: [...changedMap.values(), ...eNodes.filter(n => !removeNodeIds.has(n.id))],
+        selNode: selNode && (changedMap.has(selNode?.id) ? changedMap.get(selNode.id) : selNode),
+        isSaved: false,
+      });
     },
     onEdgesChange: changes => {
-      const eEdges = get().edges;
+      // const eEdges = get().edges;
+      const { edges: eEdges, selEdge } = get();
       const changedMap = new Map<string, Edge>();
       const removeEdgeIds = new Set<string>();
 
@@ -199,7 +255,8 @@ export function createApplicaionStore(navigate: NavigateFn) {
           if (!edge) {
             edge = eEdges.find(e => e.id === change.id);
             if (edge) {
-              changedMap.set(edge.id, { ...edge }); // Make a copy, the edge will be mutated in the next step
+              edge = { ...edge }; // Make a copy, the edge will be mutated in the next step
+              changedMap.set(edge.id, edge);
               removeEdgeIds.add(edge.id);
             } else {
               throw new Error(`Edge with id ${change.id} not found`);
@@ -213,7 +270,11 @@ export function createApplicaionStore(navigate: NavigateFn) {
         }
       }
 
-      set({ edges: [...changedMap.values(), ...eEdges.filter(e => !removeEdgeIds.has(e.id))] });
+      set({
+        edges: [...changedMap.values(), ...eEdges.filter(e => !removeEdgeIds.has(e.id))],
+        selEdge: selEdge && (changedMap.has(selEdge?.id) ? changedMap.get(selEdge.id) : selEdge),
+        isSaved: false,
+      });
     },
     onConnect: conn => {
       const eEdges = get().edges;
@@ -239,6 +300,7 @@ export function createApplicaionStore(navigate: NavigateFn) {
             targetHandle: conn.targetHandle === null ? undefined : conn.targetHandle,
           },
         ],
+        isSaved: false,
       });
     },
     onDrop: e => {
@@ -287,14 +349,19 @@ export function ProductionLineStoreProvider({ children }: { children: React.Reac
 // The production line hook
 export function useProductionLineStore(): AppState;
 export function useProductionLineStore<T>(selector: (state: AppState) => T): T;
+export function useProductionLineStore<T extends keyof AppState>(...args: T[]): Pick<AppState, T>;
 
-export function useProductionLineStore(selector?: (state: AppState) => any) {
+export function useProductionLineStore(selector?: ((state: AppState) => any) | keyof AppState, ...args: (keyof AppState)[]) {
   const store = useContext(ProductionLineStoreContext);
   if (!store) {
     throw new Error('useProductionLine must be used within a ProductionLineProvider');
   }
   if (!selector) {
     return useStore(store);
+  } else if (typeof selector === 'string') {
+    return useStore(store, state => {
+      return pick(state, [selector, ...args]);
+    });
   } else {
     return useStore(store, selector);
   }

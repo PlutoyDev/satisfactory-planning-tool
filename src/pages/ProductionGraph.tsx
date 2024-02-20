@@ -1,6 +1,5 @@
-import { useEffect, useRef } from 'react';
-import { useState, useCallback } from 'react';
-import { ReactFlow, Panel, Background, useReactFlow } from 'reactflow';
+import { useEffect, useRef, useState, useCallback, type ComponentType } from 'react';
+import { ReactFlow, Panel, Background, useReactFlow, ConnectionLineType } from 'reactflow';
 import {
   ArrowsPointingOutIcon,
   ArrowsPointingInIcon,
@@ -15,12 +14,12 @@ import {
   nodeTypeKeys,
   defaultNodeColor,
   type NodeTypeKeys,
-  type FactoryNodeData,
-  type FactoryNodeProperties,
+  type NodeDataEditorProps,
 } from '../components/FactoryGraph';
-import { saveProductionLine } from '../lib/ProductionLine';
 import { useDocs } from '../context/DocsContext';
-import { useProductionLineStore } from '../lib/store';
+import { ProductionLineInfo, useProductionLineStore } from '../lib/store';
+import useLegacyEffect from '../hooks/useLegacyEffect';
+import { useRoute } from 'wouter';
 
 export const routePattern = '/production-line/:id' as const;
 
@@ -28,13 +27,23 @@ export function ProductionGraph() {
   // Full screen
   const elRef = useRef<HTMLDivElement | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [, params] = useRoute(routePattern);
 
-  const { loading, nodes, edges, onNodesChange, onEdgesChange, onConnect, onSelectionChange, onDrop, saveFullProductionLineToIdb } =
-    useProductionLineStore();
-
-  if (loading === 'productionLine') {
-    return <div className='skeleton h-full w-full' />;
-  }
+  const {
+    loading,
+    selInfo,
+    nodes,
+    setNodes,
+    edges,
+    onNodesChange,
+    onEdgesChange,
+    onConnect,
+    onSelectionChange,
+    onDrop,
+    saveFullProductionLineToIdb,
+    loadProductionLineFromIdb,
+    setRfInstance,
+  } = useProductionLineStore();
 
   useEffect(() => {
     const onFullscreenChange = () => {
@@ -49,9 +58,22 @@ export function ProductionGraph() {
     };
   }, [setIsFullscreen]);
 
+  useLegacyEffect(() => {
+    if (!selInfo) {
+      if (params?.id) {
+        loadProductionLineFromIdb(params.id);
+      }
+    }
+  }, [selInfo, params?.id, loadProductionLineFromIdb]);
+
+  if (loading === 'productionLine' || !selInfo) {
+    return <div className='skeleton h-full w-full' />;
+  }
+
   return (
     <div className='h-full w-full bg-base-300' ref={elRef}>
       <ReactFlow
+        onInit={setRfInstance}
         nodes={nodes}
         edges={edges}
         onSelectionChange={onSelectionChange}
@@ -65,6 +87,8 @@ export function ProductionGraph() {
         onDragOver={e => (e.preventDefault(), (e.dataTransfer.dropEffect = 'move'))}
         //Keyboard Props
         deleteKeyCode={['Delete', 'Backspace']}
+        // Connection Line Props
+        connectionLineType={ConnectionLineType.SmoothStep}
       >
         <Panel position='top-center'>
           <div className='flex items-center space-x-2 rounded-sm bg-base-100 p-1 shadow-lg'>
@@ -102,7 +126,7 @@ export function ProductionGraph() {
               </button>
             </div>
             <div className='tooltip tooltip-bottom' data-tip='Test'>
-              {/* <button
+              <button
                 className='btn btn-square btn-ghost btn-sm'
                 type='button'
                 onClick={() => {
@@ -110,75 +134,73 @@ export function ProductionGraph() {
                 }}
               >
                 🧪
-              </button> */}
+              </button>
             </div>
           </div>
         </Panel>
-        {/* <ProductionLineInfoEditPanel prodLineId={params?.id!} isSaving={saving} isSaved={saved} saveFn={save} /> */}
+        <ProductionLineInfoEditPanel />
         <NodePickerPanel />
-        {/* <NodeDataEditorPanel selectedNodeId={selectedNodeId} /> */}
+        <NodeDataEditorPanel />
         <Background />
       </ReactFlow>
     </div>
   );
 }
 
-interface NodeDataEditorPanelProps {
-  selectedNodeId?: string;
-}
+function NodeDataEditorPanel() {
+  const { selNode, onNodesChange } = useProductionLineStore('selNode', 'onNodesChange');
 
-function NodeDataEditorPanel({ selectedNodeId }: NodeDataEditorPanelProps) {
-  const rfInstance = useReactFlow<FactoryNodeData>();
-  const selectedNode = selectedNodeId && (rfInstance.getNode(selectedNodeId) as FactoryNodeProperties);
-  if (!selectedNode || !selectedNode.type || !(selectedNode.type in nodeEditors)) {
+  if (!selNode || !selNode.type || !(selNode.type in nodeEditors)) {
     return (
       <Panel position='bottom-right'>
         <div className='w-64 rounded-md bg-base-100 p-2 shadow-lg first:rounded-t-md last:rounded-b-md [&>*]:w-full '>
           <h3 className='whitespace-nowrap font-bold'>Node Property</h3>
           <hr className='mt-1 pt-2' />
-          <p>{!selectedNode ? 'No node selected / found' : 'incompatible node'}</p>
+          <p>{!selNode ? 'No node selected / found' : 'incompatible node'}</p>
         </div>
       </Panel>
     );
   }
-  const Editor = nodeEditors[selectedNode.type];
 
+  const Editor = nodeEditors[selNode.type as NodeTypeKeys];
   return (
     <Panel position='bottom-right'>
       <div className='w-64 rounded-md bg-base-100 p-2 shadow-lg first:rounded-t-md last:rounded-b-md [&>*]:w-full '>
         <h3 className='whitespace-nowrap font-bold'>Node Property</h3>
         <hr className='mt-1 pt-2' />
-        {/* @ts-expect-error */}
-        <Editor node={selectedNode} updateNode={u => rfInstance.setNodes(nds => nds.map(n => (n.id === u.id ? { ...n, ...u } : n)))} />
+
+        <Editor
+          // @ts-expect-error
+          node={selNode}
+          updateNode={u => onNodesChange([{ type: 'reset', item: { ...selNode, ...u } }])}
+        />
       </div>
     </Panel>
   );
 }
 
-interface ProductionLineInfoEditPanelProps {
-  prodLineId: string;
-  isSaving: boolean;
-  isSaved: boolean;
-  saveFn: () => void;
-}
-
-function ProductionLineInfoEditPanel({ prodLineId, isSaving, isSaved, saveFn }: ProductionLineInfoEditPanelProps) {
+function ProductionLineInfoEditPanel() {
   const iconPaths = useDocs(
     ({ resources, items }) => [...Object.values(items), ...Object.values(resources)].map(i => i.iconPath).filter(Boolean) as string[],
   );
-  const { getPlInfo, updatePlInfo, deletePl } = useProductionLineInfos();
-  const plInfo = getPlInfo(prodLineId);
+  const { isSaved, saving, selInfo, setProductionLineInfos, saveFullProductionLineToIdb } = useProductionLineStore(
+    'isSaved',
+    'saving',
+    'selInfo',
+    'setProductionLineInfos',
+    'saveFullProductionLineToIdb',
+  );
   const setPlInfo = useCallback(
     (info: Partial<ProductionLineInfo>) => {
-      updatePlInfo({ ...plInfo, ...info, id: prodLineId });
+      setProductionLineInfos(pls => pls.map(pl => (pl.id === selInfo?.id ? { ...pl, ...info } : pl)));
     },
-    [plInfo, updatePlInfo],
+    [setProductionLineInfos],
   );
   const panelRef = useRef<HTMLDivElement | null>(null);
   const dropdownRef = useRef<HTMLDetailsElement | null>(null);
   const closeDialogRef = useRef<HTMLDialogElement | null>(null);
 
-  if (!plInfo) throw new Error('Production Line not found');
+  if (!selInfo) throw new Error('Production Line not found');
 
   return (
     <Panel position='top-left'>
@@ -197,7 +219,7 @@ function ProductionLineInfoEditPanel({ prodLineId, isSaving, isSaved, saveFn }: 
             <input
               type='text'
               id='title'
-              value={plInfo.title}
+              value={selInfo.title}
               onChange={e => setPlInfo({ title: e.target.value })}
               className='input input-sm input-primary'
             />
@@ -244,7 +266,10 @@ function ProductionLineInfoEditPanel({ prodLineId, isSaving, isSaved, saveFn }: 
                   <button className='btn btn-sm' onClick={() => closeDialogRef.current?.close()}>
                     No
                   </button>
-                  <button className='btn btn-error btn-sm' onClick={() => deletePl(prodLineId)}>
+                  <button
+                    className='btn btn-error btn-sm'
+                    onClick={() => setProductionLineInfos(pls => pls.filter(pl => pl.id !== selInfo.id))}
+                  >
                     Yes
                   </button>
                 </div>
@@ -254,8 +279,13 @@ function ProductionLineInfoEditPanel({ prodLineId, isSaving, isSaved, saveFn }: 
               </form>
             </dialog>
           </div>
-          <button type='button' className='btn btn-sm' disabled={isSaving || isSaved} onClick={saveFn}>
-            {isSaving ? (
+          <button
+            type='button'
+            className='btn btn-sm'
+            disabled={saving === 'productionLine' || isSaved}
+            onClick={saveFullProductionLineToIdb}
+          >
+            {saving === 'productionLine' ? (
               <>
                 <span className='loading loading-spinner loading-sm' />
                 Saving

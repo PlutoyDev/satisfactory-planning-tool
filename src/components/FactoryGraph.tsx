@@ -5,7 +5,7 @@ import { Handle, Position, useUpdateNodeInternals } from 'reactflow';
 import { useDocs } from '../context/DocsContext';
 import { getFocusedColor } from '../lib/colorUtils';
 
-interface NodeDataEditorProps<D extends Record<string, any>, T extends string | undefined = string | undefined> {
+export interface NodeDataEditorProps<D extends Record<string, any>, T extends string | undefined = string | undefined> {
   node: Node<D, T>;
   updateNode: (update: Partial<Node<Partial<D>, T>>) => void;
 }
