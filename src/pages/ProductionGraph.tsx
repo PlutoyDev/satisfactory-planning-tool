@@ -35,7 +35,6 @@ export function ProductionGraph() {
     loading,
     selInfo,
     nodes,
-    setNodes,
     edges,
     onNodesChange,
     onEdgesChange,
@@ -125,17 +124,6 @@ export function ProductionGraph() {
                 ) : (
                   <ArrowsPointingOutIcon className='h-5 w-5 text-base-content' />
                 )}
-              </button>
-            </div>
-            <div className='tooltip tooltip-bottom' data-tip='Test'>
-              <button
-                className='btn btn-square btn-ghost btn-sm'
-                type='button'
-                onClick={() => {
-                  setNodes(nds => [...nds, ...screwFactoryNode]);
-                }}
-              >
-                🧪
               </button>
             </div>
           </div>
