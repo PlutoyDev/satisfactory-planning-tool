@@ -4,6 +4,7 @@ import type { NodeProps, Node } from 'reactflow';
 import { Handle, Position, useUpdateNodeInternals } from 'reactflow';
 import { useDocs } from '../context/DocsContext';
 import { getFocusedColor } from '../lib/colorUtils';
+import Fuse from 'fuse.js';
 
 export interface NodeDataEditorProps<D extends Record<string, any>, T extends string | undefined = string | undefined> {
   node: Node<D, T>;
@@ -67,9 +68,10 @@ export function ItemNodeDataEditor(props: NodeDataEditorProps<ItemNodeData, 'ite
   const dropdownRef = useRef<HTMLDetailsElement>(null);
   const itemInfos = useDocs(d => d.items);
   const [search, setSearch] = useState('');
+  const itemFuse = useMemo(() => new Fuse(Object.values(itemInfos), { keys: ['displayName'] }), [itemInfos]);
   const filtered = useMemo(
-    () => Object.values(itemInfos).filter(({ displayName }) => displayName.toLowerCase().includes(search.toLowerCase())),
-    [itemInfos, search],
+    () => (search ? itemFuse.search(search).map(({ item }) => item) : Object.values(itemInfos)),
+    [itemInfos, search, itemFuse],
   );
   const { node, updateNode } = props;
   const selInfo = node.data.itemId && itemInfos[node.data.itemId];
@@ -239,12 +241,12 @@ export function RecipeNodeDataEditor(props: NodeDataEditorProps<RecipeNodeData, 
 
   const recipeDropdownRef = useRef<HTMLDetailsElement>(null);
   const [machineFilter, setMachineFiter] = useState<string | undefined>(undefined);
+  const recipeFuse = useMemo(() => new Fuse(Object.values(recipes), { keys: ['displayName'] }), [recipes]);
   const [search, setSearch] = useState('');
   const filteredRecipes = useMemo(
     () =>
-      Object.values(recipes).filter(
-        ({ displayName, producedIn }) =>
-          displayName.toLowerCase().includes(search.toLowerCase()) && (!producedIn || !machineFilter || producedIn === machineFilter),
+      (search ? recipeFuse.search(search).map(({ item }) => item) : Object.values(recipes)).filter(
+        ({ producedIn }) => !machineFilter || producedIn === machineFilter,
       ),
     [recipes, search, machineFilter ?? ''],
   );
