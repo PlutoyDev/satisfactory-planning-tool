@@ -6,7 +6,6 @@ interface Docs {
   recipes: Record<string, Recipe>;
   productionMachines: Record<string, ProductionMachine>;
   generators: Record<string, Generator>;
-  resources: Record<string, Resource>;
   // TODO: Add schematics
   // schematics: Schematic[]
 }

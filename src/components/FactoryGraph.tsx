@@ -9,106 +9,6 @@ export interface NodeDataEditorProps<D extends Record<string, any>, T extends st
   node: Node<D, T>;
   updateNode: (update: Partial<Node<Partial<D>, T>>) => void;
 }
-
-export interface ResourceNodeData {
-  resourceId?: string;
-  speed?: number;
-}
-
-export function ResourceNode({ data, selected }: NodeProps<ResourceNodeData>) {
-  const { resourceId, speed } = data;
-  const rInfo =
-    resourceId &&
-    useDocs(
-      ({ resources }) => {
-        const resource = resources[resourceId];
-        return { imgSrc: resource?.iconPath ?? null, itemName: resource?.displayName ?? 'Unknown' };
-      },
-      [resourceId],
-    );
-
-  return (
-    <>
-      <div
-        className='flex min-h-24 flex-col items-center justify-center rounded-md px-4 py-1 text-primary-content outline-offset-2'
-        style={{
-          backgroundColor: (selected ? defaultNodeFocusedColor : defaultNodeColor).resource,
-          outline: selected ? '2px solid ' + defaultNodeColor.resource : 'none',
-        }}
-      >
-        {rInfo ? (
-          <>
-            {rInfo.imgSrc && <img src={rInfo.imgSrc} alt={rInfo.itemName} className='h-6 w-6' />}
-            <p className='text-center font-semibold'>{rInfo.itemName}</p>
-            <p className='text-center'>{speed} / min</p>
-          </>
-        ) : (
-          <p className='text-center font-semibold'>Unset</p>
-        )}
-      </div>
-      <Handle
-        type='source'
-        style={{ backgroundColor: (selected ? defaultNodeFocusedColor : defaultNodeColor).resource }}
-        position={Position.Right}
-      />
-    </>
-  );
-}
-
-export function ResourceNodeDataEditor(props: NodeDataEditorProps<ResourceNodeData, 'resource'>) {
-  const dropdownRef = useRef<HTMLDetailsElement>(null);
-  const resourceInfos = useDocs(d => d.resources);
-  const options = useMemo(
-    () => Object.values(resourceInfos).map(({ key, displayName }) => ({ value: key, label: displayName })),
-    [resourceInfos],
-  );
-  const { node, updateNode } = props;
-
-  return (
-    <>
-      <label htmlFor='resourceId' className='form-control w-full'>
-        <div className='label'>
-          <span className='label-text'>Resource: </span>
-        </div>
-        <details ref={dropdownRef} className='dropdown dropdown-top w-full'>
-          <summary className='btn btn-sm btn-block'>
-            {(node.data.resourceId && resourceInfos[node.data.resourceId].displayName) ?? 'Unset'}
-          </summary>
-          <ul className='clean-scrollbar menu dropdown-content menu-sm z-10 max-h-52 flex-nowrap overflow-y-scroll rounded-box bg-base-200 p-2 shadow-sm'>
-            {options.map(({ value, label }) => (
-              <li key={value}>
-                <button
-                  className='btn btn-sm btn-block items-start justify-start'
-                  type='button'
-                  onClick={() => {
-                    updateNode({ ...node, data: { ...node.data, resourceId: value } });
-                    dropdownRef.current?.removeAttribute('open');
-                  }}
-                >
-                  {resourceInfos[value].iconPath && <img src={resourceInfos[value].iconPath!} alt={label} className='h-6 w-6' />}
-                  {label}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </details>
-      </label>
-      <label htmlFor='speed' className='form-control w-full'>
-        <div className='label'>
-          <span className='label-text'>Speed: </span>
-        </div>
-        <input
-          id='speed'
-          type='number'
-          className='input input-sm input-bordered appearance-none'
-          defaultValue={node.data.speed}
-          onChange={e => updateNode({ ...node, data: { ...node.data, speed: +e.target.value } })}
-        />
-      </label>
-    </>
-  );
-}
-
 export interface ItemNodeData {
   /** Item id */
   itemId?: string;
@@ -199,7 +99,7 @@ export function ItemNodeDataEditor(props: NodeDataEditorProps<ItemNodeData, 'ite
               value={search}
               onChange={e => setSearch(e.target.value)}
             />
-            <ul className='clean-scrollbar menu menu-horizontal menu-sm h-48 overflow-y-scroll'>
+            <ul className='clean-scrollbar menu menu-horizontal menu-sm h-48 w-full overflow-y-scroll'>
               {filtered.map(({ key, iconPath, displayName }) => (
                 <li className='w-full' key={key}>
                   <button
@@ -245,7 +145,7 @@ export interface RecipeNodeData {
 }
 
 export function RecipeNode({ id, data, selected }: NodeProps<RecipeNodeData>) {
-  const { items, resources, recipes, productionMachines } = useDocs();
+  const { items, recipes, productionMachines } = useDocs();
   const { recipeId, thouCs = 10000000 } = data;
   const updateNodeInternals = useUpdateNodeInternals();
   const prevRecipeId = useRef(data.recipeId);
@@ -272,8 +172,8 @@ export function RecipeNode({ id, data, selected }: NodeProps<RecipeNodeData>) {
 
   const recipeInfo = recipes[recipeId];
   const machineInfo = productionMachines[recipeInfo.producedIn];
-  const ingredientInfos = recipeInfo.ingredients?.map(({ itemKey }) => items[itemKey] ?? resources[itemKey] ?? { displayName: 'Unknown' });
-  const productInfos = recipeInfo.products?.map(({ itemKey }) => items[itemKey] ?? resources[itemKey] ?? { displayName: 'Unknown' });
+  const ingredientInfos = recipeInfo.ingredients?.map(({ itemKey }) => items[itemKey] ?? { displayName: 'Unknown' });
+  const productInfos = recipeInfo.products?.map(({ itemKey }) => items[itemKey] ?? { displayName: 'Unknown' });
 
   return (
     <>
@@ -333,7 +233,7 @@ export function RecipeNode({ id, data, selected }: NodeProps<RecipeNodeData>) {
 }
 
 export function RecipeNodeDataEditor(props: NodeDataEditorProps<RecipeNodeData, 'recipe'>) {
-  const { recipes, productionMachines, items, resources } = useDocs();
+  const { recipes, productionMachines, items } = useDocs();
   const { node, updateNode } = props;
   const recipeInfo = node.data.recipeId && recipes[node.data.recipeId];
 
@@ -351,10 +251,9 @@ export function RecipeNodeDataEditor(props: NodeDataEditorProps<RecipeNodeData, 
   const getAnyIcon = useCallback(
     (key: string) => {
       if (items[key]?.iconPath) return <img src={items[key].iconPath!} alt={items[key].displayName} className='h-6 w-6' />;
-      if (resources[key]?.iconPath) return <img src={resources[key].iconPath!} alt={resources[key].displayName} className='h-6 w-6' />;
       return null;
     },
-    [items, resources],
+    [items],
   );
 
   return (
@@ -585,7 +484,6 @@ export function LogisticNodeDataEditor(props: NodeDataEditorProps<LogisticNodeDa
 // Used by ReactFlow to render custom nodes
 export const nodeTypes = {
   item: ItemNode,
-  resource: ResourceNode,
   recipe: RecipeNode,
   logistic: LogisticNode,
 } as const;
@@ -594,7 +492,6 @@ export type NodeTypeKeys = keyof typeof nodeTypes;
 export const nodeTypeKeys = Object.keys(nodeTypes) as NodeTypeKeys[];
 
 export const defaultNodeColor = {
-  resource: '#76BABF',
   item: '#B7A9DA',
   recipe: '#F6AD55',
   logistic: '#71DA8F',
@@ -606,7 +503,6 @@ export const defaultNodeFocusedColor = Object.fromEntries(
 
 export const nodeEditors = {
   item: ItemNodeDataEditor,
-  resource: ResourceNodeDataEditor,
   recipe: RecipeNodeDataEditor,
   logistic: LogisticNodeDataEditor,
 } as const satisfies Record<NodeTypeKeys, ComponentType<NodeDataEditorProps<any, any>>>;

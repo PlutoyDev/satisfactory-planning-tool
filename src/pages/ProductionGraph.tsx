@@ -180,9 +180,7 @@ function NodeDataEditorPanel() {
 
 function ProductionLineInfoEditPanel() {
   const navigate = useLocation()[1];
-  const iconPaths = useDocs(
-    ({ resources, items }) => [...Object.values(items), ...Object.values(resources)].map(i => i.iconPath).filter(Boolean) as string[],
-  );
+  const iconPaths = useDocs(({ items }) => Object.values(items).map(i => i.iconPath));
   const { isSaved, saving, selInfo, setProductionLineInfos, saveFullProductionLineToIdb } = useProductionLineStore(
     'isSaved',
     'saving',
@@ -232,13 +230,20 @@ function ProductionLineInfoEditPanel() {
             >
               <div className='grid w-max auto-rows-fr grid-cols-8 gap-1'>
                 {iconPaths.map((icon, i) => {
-                  const [hasIcon, setHasIcon] = useState(true);
+                  const [hasIcon, setHasIcon] = useState(!!icon);
                   if (hasIcon === false) {
                     return null;
                   }
                   return (
-                    <button type='button' key={i} onClick={() => (setPlInfo({ icon }), dropdownRef.current?.removeAttribute('open'))}>
-                      <img src={icon} alt='' onError={() => setHasIcon(false)} className='h-6 w-6' />
+                    <button
+                      type='button'
+                      key={i}
+                      onClick={() => {
+                        setPlInfo({ icon: icon! });
+                        dropdownRef.current?.removeAttribute('open');
+                      }}
+                    >
+                      <img src={icon!} alt='' onError={() => setHasIcon(false)} className='h-6 w-6' />
                     </button>
                   );
                 })}
@@ -313,7 +318,6 @@ function ProductionLineInfoEditPanel() {
 }
 
 const nodeNames = {
-  resource: 'Resource',
   item: 'Item',
   recipe: 'Recipe',
   logistic: 'Logistic',

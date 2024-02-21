@@ -3,8 +3,8 @@ import type { FactoryNodeProperties } from '../components/FactoryGraph';
 export const screwFactoryNode: FactoryNodeProperties[] = [
   {
     id: '1',
-    type: 'resource',
-    data: { resourceId: 'Desc_OreIron_C', speed: 30 },
+    type: 'item',
+    data: { itemId: 'Desc_OreIron_C', speed: 30 },
     position: { x: -164, y: 3 },
   },
   {
@@ -16,7 +16,7 @@ export const screwFactoryNode: FactoryNodeProperties[] = [
   {
     id: 'ingots',
     type: 'recipe',
-    data: { recipeId: 'Recipe_IngotIron_C', qty: 1 },
+    data: { recipeId: 'Recipe_IngotIron_C' },
     position: { x: -5, y: 19 },
   },
   {
