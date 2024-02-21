@@ -44,6 +44,18 @@ const results = {
   generators: ReturnType<typeof parseProductionMachine>;
 };
 
+const itemClassNames = [
+  'FGItemDescriptor',
+  'FGItemDescriptorBiomass',
+  'FGItemDescriptorNuclearFuel',
+  'FGResourceDescriptor',
+  'FGEquipmentDescriptor',
+  'FGConsumableDescriptor',
+  'FGAmmoTypeProjectile',
+  'FGAmmoTypeSpreadshot',
+  'FGAmmoTypeInstantHit',
+];
+
 const classesList: { nativeClass: string; classes: string[] }[] = [];
 
 for (const doc of docs) {
@@ -56,7 +68,7 @@ for (const doc of docs) {
     continue;
   }
   const className = match[1];
-  if (['FGItemDescriptor', 'FGItemDescriptorBiomass', 'FGResourceDescriptor'].includes(className)) {
+  if (itemClassNames.includes(className)) {
     results.items = Object.assign(results.items, parseItem(doc.Classes));
   } else if (className === 'FGRecipe') {
     results.recipes = parseRecipe(doc.Classes);
@@ -97,6 +109,30 @@ for (const item of Object.values(results.items)) {
   if (ingredientOf.length > 0) {
     item.ingredientOf = ingredientOf;
   }
+
+  if (productOf.length === 0 && ingredientOf.length === 0) {
+    console.error(`Item ${item.key} has no recipes that use / produce it`);
+  }
+}
+
+for (const recipe of Object.values(results.recipes)) {
+  // Check if the recipe ingredients/products are in the items list
+  if (recipe.ingredients) {
+    for (const ingredient of recipe.ingredients) {
+      if (!results.items[ingredient.itemKey]) {
+        console.error(`Missing item for recipe ingredient: ${ingredient.itemKey}`);
+      }
+    }
+  }
+
+  if (recipe.products) {
+    for (const product of recipe.products) {
+      if (!results.items[product.itemKey]) {
+        console.error(`Missing item for recipe product: ${product.itemKey}`);
+      }
+    }
+  }
 }
 
 await writeFile('./public/satisfactory/simplified-docs.json', JSON.stringify(results, null, minifyJson ? undefined : 2));
+await writeFile('./public/satisfactory/classes-list.json', JSON.stringify(classesList, null, 2));

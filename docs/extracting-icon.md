@@ -31,8 +31,13 @@ Right click on each of the following files/folders and select `Save Folder's Pac
 - `FactoryGame/Content/FactoryGame/Resource/Parts`
 - `FactoryGame/Content/FactoryGame/Resource/RawResources`
 - `FactoryGame/Content/FactoryGame/Resource/Environment`
+- `FactoryGame/Content/FactoryGame/Resource/Equipment/Beacon`
 - `FactoryGame/Content/FactoryGame/Buildable`
 - `FactoryGame/Content/FactoryGame/Events/Christmas/Parts`
+- `FactoryGame/Content/FactoryGame/Events/Christmas/Fireworks`
+- `FactoryGame/Content/FactoryGame/IconDesc_PortableMiner_256.uasset`
+- `FactoryGame/Content/FactoryGame/Equipment/RebarGun/UI`
+- `FactoryGame/Content/FactoryGame/Equipment/Rifle/UI`
 
 ## Finishing up
 
