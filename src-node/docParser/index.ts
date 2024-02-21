@@ -20,9 +20,7 @@ if (!minifyJson) {
 const filePath = './res/docs.json';
 const json = await readFile(filePath).catch(err => {
   console.error(err);
-  console.log(
-    'Failed to read docs.json, docs.json must be manually copied to the root directory of this project.'
-  );
+  console.log('Failed to read docs.json, docs.json must be manually copied to the root directory of this project.');
   process.exit(1);
 });
 const decoder = new TextDecoder('utf-16le');
@@ -39,13 +37,11 @@ const results = {
   recipes: {},
   productionMachines: {},
   generators: {},
-  resources: {},
 } as {
   items: ReturnType<typeof parseItem>;
   recipes: ReturnType<typeof parseRecipe>;
   productionMachines: ReturnType<typeof parseProductionMachine>;
   generators: ReturnType<typeof parseProductionMachine>;
-  resources: ReturnType<typeof parseItem>;
 };
 
 const classesList: { nativeClass: string; classes: string[] }[] = [];
@@ -60,56 +56,32 @@ for (const doc of docs) {
     continue;
   }
   const className = match[1];
-  if (['FGItemDescriptor', 'FGItemDescriptorBiomass'].includes(className)) {
+  if (['FGItemDescriptor', 'FGItemDescriptorBiomass', 'FGResourceDescriptor'].includes(className)) {
     results.items = Object.assign(results.items, parseItem(doc.Classes));
-  } else if (className === 'FGResourceDescriptor') {
-    results.resources = Object.assign(
-      results.resources,
-      parseItem(doc.Classes)
-    );
   } else if (className === 'FGRecipe') {
     results.recipes = parseRecipe(doc.Classes);
   } else if (
-    [
-      'FGBuildableManufacturer',
-      'FGBuildableManufacturerVariablePower',
-      'FGBuildableResourceExtractor',
-      'FGBuildableWaterPump',
-    ].includes(className)
+    ['FGBuildableManufacturer', 'FGBuildableManufacturerVariablePower', 'FGBuildableResourceExtractor', 'FGBuildableWaterPump'].includes(
+      className,
+    )
   ) {
-    results.productionMachines = Object.assign(
-      results.productionMachines,
-      parseProductionMachine(doc.Classes)
-    );
-  } else if (
-    className === 'FGBuildableGeneratorFuel' ||
-    className === 'FGBuildableGeneratorNuclear'
-  ) {
-    results.generators = Object.assign(
-      results.generators,
-      parsePowerGenerator(doc.Classes)
-    );
+    results.productionMachines = Object.assign(results.productionMachines, parseProductionMachine(doc.Classes));
+  } else if (className === 'FGBuildableGeneratorFuel' || className === 'FGBuildableGeneratorNuclear') {
+    results.generators = Object.assign(results.generators, parsePowerGenerator(doc.Classes));
   }
 
   classesList.push({
     nativeClass: className,
-    classes: doc.Classes.map(
-      ({ ClassName }: Record<string, unknown>) => ClassName
-    ),
+    classes: doc.Classes.map(({ ClassName }: Record<string, unknown>) => ClassName),
   });
 }
 
 // PostProcess
 // Add recipeKeys to items and resources
-for (const item of [
-  ...Object.values(results.items),
-  ...Object.values(results.resources),
-]) {
+for (const item of Object.values(results.items)) {
   const productOf: string[] = [];
   const ingredientOf: string[] = [];
-  for (const [recipeKey, { ingredients, products }] of Object.entries(
-    results.recipes
-  )) {
+  for (const [recipeKey, { ingredients, products }] of Object.entries(results.recipes)) {
     if (products?.some(product => product.itemKey === item.key)) {
       productOf.push(recipeKey);
     }
@@ -127,7 +99,4 @@ for (const item of [
   }
 }
 
-await writeFile(
-  './public/satisfactory/simplified-docs.json',
-  JSON.stringify(results, null, minifyJson ? undefined : 2)
-);
+await writeFile('./public/satisfactory/simplified-docs.json', JSON.stringify(results, null, minifyJson ? undefined : 2));
