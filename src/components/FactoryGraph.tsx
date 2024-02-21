@@ -30,7 +30,7 @@ export function ResourceNode({ data, selected }: NodeProps<ResourceNodeData>) {
   return (
     <>
       <div
-        className='flex flex-col items-center justify-center rounded-md px-4 py-1 text-primary-content outline-offset-2'
+        className='flex min-h-24 flex-col items-center justify-center rounded-md px-4 py-1 text-primary-content outline-offset-2'
         style={{
           backgroundColor: (selected ? defaultNodeFocusedColor : defaultNodeColor).resource,
           outline: selected ? '2px solid ' + defaultNodeColor.resource : 'none',
@@ -38,7 +38,7 @@ export function ResourceNode({ data, selected }: NodeProps<ResourceNodeData>) {
       >
         {rInfo ? (
           <>
-            {rInfo.imgSrc && <img src={rInfo.imgSrc} alt={rInfo.itemName} className='h-8 w-8' />}
+            {rInfo.imgSrc && <img src={rInfo.imgSrc} alt={rInfo.itemName} className='h-6 w-6' />}
             <p className='text-center font-semibold'>{rInfo.itemName}</p>
             <p className='text-center'>{speed} / min</p>
           </>
@@ -137,7 +137,7 @@ export function ItemNode({ data, selected }: NodeProps<ItemNodeData>) {
       />
       {
         <div
-          className='flex flex-col items-center justify-center rounded-md px-4 py-1 text-primary-content outline-offset-2'
+          className='flex min-h-24 flex-col items-center justify-center rounded-md px-4 py-1 text-primary-content outline-offset-2'
           style={{
             backgroundColor: (selected ? defaultNodeFocusedColor : defaultNodeColor).item,
             outline: selected ? '2px solid ' + defaultNodeColor.item : 'none',
@@ -145,7 +145,7 @@ export function ItemNode({ data, selected }: NodeProps<ItemNodeData>) {
         >
           {itemInfo ? (
             <>
-              {itemInfo.imgSrc && <img src={itemInfo.imgSrc} alt={itemInfo.itemName} className='h-8 w-8' />}
+              {itemInfo.imgSrc && <img src={itemInfo.imgSrc} alt={itemInfo.itemName} className='h-6 w-6' />}
               <p className='text-center font-semibold'>{itemInfo.itemName}</p>
               <p className='text-center'>{speed} / min</p>
             </>
@@ -262,14 +262,14 @@ export function RecipeNode({ data, selected }: NodeProps<RecipeNodeData>) {
         style={{ backgroundColor: (selected ? defaultNodeFocusedColor : defaultNodeColor).recipe }}
       />
       <div
-        className='flex flex-col items-center justify-center rounded-md px-4 py-1 text-primary-content outline-offset-2'
+        className='flex min-h-24 max-w-48 flex-col items-center justify-center rounded-md px-4 py-1 text-primary-content outline-offset-2'
         style={{
           backgroundColor: (selected ? defaultNodeFocusedColor : defaultNodeColor).recipe,
           outline: selected ? '2px solid ' + defaultNodeColor.recipe : 'none',
         }}
       >
         {recipeInfo ? (
-          <p className='text-center font-semibold'>{recipeInfo.displayName}</p>
+          <p className='text-pretty text-center font-semibold'>{recipeInfo.displayName}</p>
         ) : (
           <p className='text-center font-semibold'>Unset</p>
         )}
@@ -445,7 +445,7 @@ export function LogisticNode({ id, data, selected }: NodeProps<LogisticNodeData>
           style={{ backgroundColor: (selected ? defaultNodeFocusedColor : defaultNodeColor).logistic, top: '75%' }}
         />
         <div
-          className='min-h-16 gap-1 rounded-md px-4 py-1 pt-5 text-primary-content outline-offset-2'
+          className='min-h-24 gap-1 rounded-md px-4 py-1 pt-5 text-primary-content outline-offset-2'
           style={{
             backgroundColor: (selected ? defaultNodeFocusedColor : defaultNodeColor).logistic,
             outline: selected ? '2px solid ' + defaultNodeColor.logistic : 'none',
@@ -470,7 +470,7 @@ export function LogisticNode({ id, data, selected }: NodeProps<LogisticNodeData>
         style={{ backgroundColor: (selected ? defaultNodeFocusedColor : defaultNodeColor).logistic }}
       />
       <div
-        className='grid min-h-16 auto-cols-fr grid-cols-2 grid-rows-3 place-items-center gap-1 rounded-md px-4 py-1 text-primary-content outline-offset-2'
+        className='grid min-h-24 auto-cols-fr grid-flow-col grid-cols-1 grid-rows-3 place-items-center gap-1 rounded-md px-4 py-1 text-primary-content outline-offset-2'
         style={{
           backgroundColor: (selected ? defaultNodeFocusedColor : defaultNodeColor).logistic,
           outline: selected ? '2px solid ' + defaultNodeColor.logistic : 'none',
