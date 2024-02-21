@@ -1,5 +1,5 @@
 // Reactflow custom nodes
-import { useRef, useEffect, type ComponentType, useMemo, useState } from 'react';
+import { useRef, useEffect, type ComponentType, useMemo, useState, useCallback } from 'react';
 import type { NodeProps, Node } from 'reactflow';
 import { Handle, Position, useUpdateNodeInternals } from 'reactflow';
 import { useDocs } from '../context/DocsContext';
@@ -100,7 +100,7 @@ export function ResourceNodeDataEditor(props: NodeDataEditorProps<ResourceNodeDa
         <input
           id='speed'
           type='number'
-          className='input input-bordered appearance-none'
+          className='input input-sm input-bordered appearance-none'
           defaultValue={node.data.speed}
           onChange={e => updateNode({ ...node, data: { ...node.data, speed: +e.target.value } })}
         />
@@ -237,7 +237,6 @@ export function ItemNodeDataEditor(props: NodeDataEditorProps<ItemNodeData, 'ite
 
 export interface RecipeNodeData {
   recipeId?: string;
-  machineId?: string;
   /**
    * Clockspeeds in  thousandth of a percent
    *
@@ -245,22 +244,50 @@ export interface RecipeNodeData {
   thouCs?: number;
 }
 
-export function RecipeNode({ data, selected }: NodeProps<RecipeNodeData>) {
-  const { recipeId, machineId, thouCs = 10000000 } = data;
-  const recipeInfo = useDocs(({ recipes }) => (recipeId ? recipes[recipeId] : undefined), [recipeId]);
-  const machineInfo = useDocs(
-    ({ productionMachines }) =>
-      machineId || recipeInfo?.producedIn ? productionMachines[(machineId ?? recipeInfo?.producedIn) as string] : undefined,
-    [machineId, recipeInfo?.producedIn],
-  );
+export function RecipeNode({ id, data, selected }: NodeProps<RecipeNodeData>) {
+  const { items, resources, recipes, productionMachines } = useDocs();
+  const { recipeId, thouCs = 10000000 } = data;
+  const updateNodeInternals = useUpdateNodeInternals();
+  const prevRecipeId = useRef(data.recipeId);
+
+  useEffect(() => {
+    if (prevRecipeId.current !== recipeId) {
+      updateNodeInternals(id);
+      prevRecipeId.current = recipeId;
+    }
+  }, [recipeId]);
+
+  if (!recipeId)
+    return (
+      <div
+        className='rounded-md px-4 py-1 text-primary-content outline-offset-2'
+        style={{
+          backgroundColor: (selected ? defaultNodeFocusedColor : defaultNodeColor).recipe,
+          outline: selected ? '2px solid ' + defaultNodeColor.recipe : 'none',
+        }}
+      >
+        <p className='text-center font-semibold'>Unset</p>
+      </div>
+    );
+
+  const recipeInfo = recipes[recipeId];
+  const machineInfo = productionMachines[recipeInfo.producedIn];
+  const ingredientInfos = recipeInfo.ingredients?.map(({ itemKey }) => items[itemKey] ?? resources[itemKey] ?? { displayName: 'Unknown' });
+  const productInfos = recipeInfo.products?.map(({ itemKey }) => items[itemKey] ?? resources[itemKey] ?? { displayName: 'Unknown' });
 
   return (
     <>
-      <Handle
-        type='target'
-        position={Position.Left}
-        style={{ backgroundColor: (selected ? defaultNodeFocusedColor : defaultNodeColor).recipe }}
-      />
+      {ingredientInfos?.map(({ form }, i, { length }) => (
+        <Handle
+          id={`in-${form}-${i}`}
+          type='target'
+          position={Position.Left}
+          style={{
+            backgroundColor: (selected ? defaultNodeFocusedColor : defaultNodeColor).recipe,
+            top: `${((i + 1) / (length + 1)) * 100}%`,
+          }}
+        />
+      ))}
       <div
         className='flex min-h-24 max-w-48 flex-col items-center justify-center rounded-md px-4 py-1 text-primary-content outline-offset-2'
         style={{
@@ -269,7 +296,15 @@ export function RecipeNode({ data, selected }: NodeProps<RecipeNodeData>) {
         }}
       >
         {recipeInfo ? (
-          <p className='text-pretty text-center font-semibold'>{recipeInfo.displayName}</p>
+          <>
+            <p className='text-pretty text-center font-semibold'>{recipeInfo.displayName}</p>
+            <div className='flex flex-nowrap gap-x-0.5'>
+              {ingredientInfos?.map(
+                ({ iconPath, displayName }) => iconPath && <img src={iconPath} alt={displayName} className='h-6 w-6' />,
+              )}
+              →{productInfos?.map(({ iconPath, displayName }) => iconPath && <img src={iconPath} alt={displayName} className='h-6 w-6' />)}
+            </div>
+          </>
         ) : (
           <p className='text-center font-semibold'>Unset</p>
         )}
@@ -281,36 +316,45 @@ export function RecipeNode({ data, selected }: NodeProps<RecipeNodeData>) {
           <p className='text-center font-semibold'>Unset</p>
         )}
       </div>
-      <Handle
-        type='source'
-        position={Position.Right}
-        style={{ backgroundColor: (selected ? defaultNodeFocusedColor : defaultNodeColor).recipe }}
-      />
+      {productInfos?.map(({ form }, i, { length }) => (
+        <Handle
+          id={`out-${form}-${i}`}
+          type='source'
+          position={Position.Right}
+          style={{
+            backgroundColor: (selected ? defaultNodeFocusedColor : defaultNodeColor).recipe,
+            top: `${((i + 1) / (length + 1)) * 100}%`,
+            borderRadius: form === 'liquid' ? '0' : undefined,
+          }}
+        />
+      ))}
     </>
   );
 }
 
 export function RecipeNodeDataEditor(props: NodeDataEditorProps<RecipeNodeData, 'recipe'>) {
-  const { recipes, productionMachines } = useDocs(({ recipes, productionMachines }) => ({ recipes, productionMachines }));
+  const { recipes, productionMachines, items, resources } = useDocs();
   const { node, updateNode } = props;
   const recipeInfo = node.data.recipeId && recipes[node.data.recipeId];
-  const machineInfo = node.data.machineId
-    ? productionMachines[node.data.machineId]
-    : recipeInfo
-      ? productionMachines[recipeInfo.producedIn]
-      : undefined;
 
   const recipeDropdownRef = useRef<HTMLDetailsElement>(null);
-  const machineDropdownRef = useRef<HTMLDetailsElement>(null);
+  const [machineFilter, setMachineFiter] = useState<string | undefined>(undefined);
   const [search, setSearch] = useState('');
   const filteredRecipes = useMemo(
     () =>
       Object.values(recipes).filter(
         ({ displayName, producedIn }) =>
-          displayName.toLowerCase().includes(search.toLowerCase()) &&
-          (!producedIn || !node.data.machineId || producedIn === node.data.machineId),
+          displayName.toLowerCase().includes(search.toLowerCase()) && (!producedIn || !machineFilter || producedIn === machineFilter),
       ),
-    [recipes, search, node.data.machineId ?? ''],
+    [recipes, search, machineFilter ?? ''],
+  );
+  const getAnyIcon = useCallback(
+    (key: string) => {
+      if (items[key]?.iconPath) return <img src={items[key].iconPath!} alt={items[key].displayName} className='h-6 w-6' />;
+      if (resources[key]?.iconPath) return <img src={resources[key].iconPath!} alt={resources[key].displayName} className='h-6 w-6' />;
+      return null;
+    },
+    [items, resources],
   );
 
   return (
@@ -321,7 +365,7 @@ export function RecipeNodeDataEditor(props: NodeDataEditorProps<RecipeNodeData, 
         </div>
         <details ref={recipeDropdownRef} className='dropdown dropdown-top w-full'>
           <summary className='btn btn-sm btn-block'>{recipeInfo ? recipeInfo.displayName : 'Unset'}</summary>
-          <div className='dropdown-content right-0 z-10 rounded-box bg-base-200 p-2 shadow-sm'>
+          <div className='dropdown-content right-0 z-10 w-96 rounded-box bg-base-200 p-2 shadow-sm'>
             <input
               type='text'
               className='input input-sm input-bordered mb-1 w-full'
@@ -329,53 +373,58 @@ export function RecipeNodeDataEditor(props: NodeDataEditorProps<RecipeNodeData, 
               value={search}
               onChange={e => setSearch(e.target.value)}
             />
-            <ul className='clean-scrollbar menu menu-horizontal menu-sm h-48 overflow-y-scroll '>
-              {filteredRecipes.map(({ key, displayName }) => (
+            {/* Machine Filter radio button group */}
+            <div className='mb-1 flex flex-wrap'>
+              <div className='form-control' key='all'>
+                <label className='label cursor-pointer'>
+                  <input
+                    type='radio'
+                    className='radio radio-xs'
+                    name='machineFilter'
+                    value={undefined}
+                    checked={machineFilter === undefined}
+                    onChange={e => setMachineFiter(undefined)}
+                  />
+                  <span className='label-text ml-2 text-sm'>All</span>
+                </label>
+              </div>
+              {Object.values(productionMachines).map(({ key, displayName }) => (
+                <div className='form-control' key={key}>
+                  <label className='label cursor-pointer'>
+                    <input
+                      type='radio'
+                      className='radio radio-xs'
+                      name='machineFilter'
+                      value={key}
+                      checked={machineFilter === key}
+                      onChange={e => setMachineFiter(e.target.value)}
+                    />
+                    <span className='label-text ml-2 text-sm'>{displayName}</span>
+                  </label>
+                </div>
+              ))}
+            </div>
+            <ul className='clean-scrollbar menu menu-horizontal menu-sm max-h-48 max-w-full overflow-y-scroll !p-0'>
+              {filteredRecipes.map(({ key, displayName, ingredients, products }) => (
                 <li className='w-full' key={key}>
                   <button
-                    className='btn btn-sm btn-block items-start justify-start whitespace-nowrap'
+                    className='btn btn-block min-h-max grid-cols-[1fr_auto] grid-rows-[auto] place-content-center'
                     type='button'
                     onClick={e => {
-                      if (node.data.machineId) {
-                        delete node.data.machineId;
-                      }
                       updateNode({ ...node, data: { ...node.data, recipeId: key } });
                       recipeDropdownRef.current?.removeAttribute('open');
                     }}
                   >
-                    {displayName}
+                    <span className='max-w-48 text-pretty'>{displayName}</span>
+                    <div className='flex flex-nowrap gap-x-0.5'>
+                      {ingredients?.map(({ itemKey }) => (<>{getAnyIcon(itemKey)}</>) as any)}→
+                      {products?.map(({ itemKey }) => (<>{getAnyIcon(itemKey)}</>) as any)}
+                    </div>
                   </button>
                 </li>
               ))}
             </ul>
           </div>
-        </details>
-      </label>
-      <label htmlFor='machineId' className='form-control w-full'>
-        <div className='label'>
-          <span className='label-text'>Machine: </span>
-        </div>
-        <details ref={machineDropdownRef} className='dropdown dropdown-top w-full'>
-          <summary className='btn btn-sm btn-block'>{machineInfo ? machineInfo.displayName : 'Unset'}</summary>
-          <ul className='clean-scrollbar menu dropdown-content menu-sm z-10 max-h-52 flex-nowrap overflow-y-auto rounded-box bg-base-200 p-2 shadow-sm'>
-            {Object.values(productionMachines).map(({ key, displayName }) => (
-              <li className='w-full' key={key}>
-                <button
-                  className='btn btn-sm btn-block '
-                  type='button'
-                  onClick={() => {
-                    if (recipeInfo && recipeInfo?.producedIn !== key) {
-                      delete node.data.recipeId;
-                    }
-                    updateNode({ ...node, data: { ...node.data, machineId: key } });
-                    machineDropdownRef.current?.removeAttribute('open');
-                  }}
-                >
-                  {displayName}
-                </button>
-              </li>
-            ))}
-          </ul>
         </details>
       </label>
       <label htmlFor='clockspeeds' className='form-control w-full'>
