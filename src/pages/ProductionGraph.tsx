@@ -74,22 +74,31 @@ export function ProductionGraph() {
   return (
     <div className='h-full w-full bg-base-300' ref={elRef}>
       <ReactFlow
-        onInit={setRfInstance}
+        // Common Props
         nodes={nodes}
         edges={edges}
-        onSelectionChange={onSelectionChange}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         nodeTypes={nodeTypes}
         // TODO: Make a better attribution, then hide this (It doesn't look good with this background)
         proOptions={{ hideAttribution: false }}
-        onDrop={onDrop}
-        onDragOver={e => (e.preventDefault(), (e.dataTransfer.dropEffect = 'move'))}
+        // Viewport Props
+        minZoom={0.1}
+        snapToGrid={true}
+        snapGrid={[10, 10]}
+        // Event Handlers - General Events
+        onInit={setRfInstance}
+        // Event Handlers - Selection Events
+        onSelectionChange={onSelectionChange}
+        // Connection Line Props
+        connectionRadius={50}
+        connectionLineType={ConnectionLineType.SmoothStep}
         //Keyboard Props
         deleteKeyCode={['Delete', 'Backspace']}
-        // Connection Line Props
-        connectionLineType={ConnectionLineType.SmoothStep}
+        // HTML Div Props
+        onDrop={onDrop}
+        onDragOver={e => (e.preventDefault(), (e.dataTransfer.dropEffect = 'move'))}
       >
         <Panel position='top-center'>
           <div className='flex items-center space-x-2 rounded-sm bg-base-100 p-1 shadow-lg'>
