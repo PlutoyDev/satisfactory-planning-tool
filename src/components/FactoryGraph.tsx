@@ -134,18 +134,25 @@ export interface ItemNodeData extends BaseNodeData {
 
 export function ItemNode(props: NodeProps<ItemNodeData>) {
   const { itemId, speed } = props.data;
-  const itemInfo =
-    itemId &&
-    useDocs(
-      ({ items }) => {
-        const item = items[itemId];
-        return { imgSrc: item?.iconPath ?? null, itemName: item?.displayName ?? 'Unknown' };
-      },
-      [itemId],
-    );
+  const itemInfo = useDocs(
+    ({ items }) => {
+      if (!itemId) return null;
+      const item = items[itemId];
+      return {
+        imgSrc: item?.iconPath ?? null,
+        itemName: item?.displayName ?? 'Unknown',
+        form: item.form === 'liquid' || item.form === 'gas' ? 'fluid' : ('solid' as 'solid' | 'fluid'),
+      };
+    },
+    [itemId],
+  );
 
   return (
-    <BaseNode factoryIO={['left:solid:in', 'right:solid:out']} {...props} backgroundColor={defaultNodeColor.item}>
+    <BaseNode
+      {...props}
+      factoryIO={itemInfo?.form ? [`left:${itemInfo.form}:in`, `right:${itemInfo.form}:out`] : []}
+      backgroundColor={defaultNodeColor.item}
+    >
       <div className='flex min-h-24 flex-col items-center justify-center'>
         {itemInfo ? (
           <>
