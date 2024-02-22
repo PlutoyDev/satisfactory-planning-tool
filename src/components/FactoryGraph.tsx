@@ -1,5 +1,5 @@
 // Reactflow custom nodes
-import { useRef, useEffect, type ComponentType, useMemo, useState, useCallback } from 'react';
+import { useRef, useEffect, type ComponentType, useMemo, useState, useCallback, Fragment } from 'react';
 import type { NodeProps, Node } from 'reactflow';
 import { Handle, Position, useUpdateNodeInternals } from 'reactflow';
 import { useDocs } from '../context/DocsContext';
@@ -16,7 +16,7 @@ export interface BaseNodeData {
   bgColor?: string;
 }
 
-const FactoryIODirOrder = ['top', 'right', 'bottom', 'left'] as const;
+const FactoryIODirOrder = ['left', 'top', 'right', 'bottom'] as const;
 type FactoryIODir = (typeof FactoryIODirOrder)[number];
 type FactoryIO = `${FactoryIODir}:${'solid' | 'fluid'}:${'in' | 'out'}`;
 
@@ -153,7 +153,7 @@ export function ItemNode(props: NodeProps<ItemNodeData>) {
       factoryIO={itemInfo?.form ? [`left:${itemInfo.form}:in`, `right:${itemInfo.form}:out`] : []}
       backgroundColor={defaultNodeColor.item}
     >
-      <div className='flex min-h-24 flex-col items-center justify-center'>
+      <div className='flex h-24 w-24 flex-col items-center justify-center'>
         {itemInfo ? (
           <>
             {itemInfo.imgSrc && <img src={itemInfo.imgSrc} alt={itemInfo.itemName} className='h-6 w-6' />}
@@ -431,39 +431,45 @@ export function RecipeNodeDataEditor(props: NodeDataEditorProps<RecipeNodeData, 
   );
 }
 
-export interface LogisticNodeData extends BaseNodeData {
-  type?: 'splitter' | 'splitterSmart' | 'splitterProg' | 'merger';
-  rules?: Record<'left' | 'center' | 'right', 'any' | 'none' | 'anyUndefined' | 'overflow' | `item: ${string}` | `resource: ${string}`>;
-}
-
 const logisticNames = {
   splitter: 'Splitter',
   splitterSmart: 'Smart Splitter',
   splitterProg: 'Programmable Splitter',
   merger: 'Merger',
+  pipeJunc: 'Pipeline Junction',
 } as const;
 
+export interface LogisticNodeData extends BaseNodeData {
+  type?: keyof typeof logisticNames;
+  rules?: Record<'left' | 'center' | 'right', 'any' | 'none' | 'anyUndefined' | 'overflow' | `item: ${string}` | `resource: ${string}`>;
+  pipeInOut?: { left?: 'in' | 'out'; right?: 'in' | 'out'; top?: 'in' | 'out'; bottom?: 'in' | 'out' };
+}
+
 export function LogisticNode(props: NodeProps<LogisticNodeData>) {
-  const { type = 'splitter', rules } = props.data;
+  const { type = 'splitter', rules, pipeInOut = { left: 'in' } } = props.data;
   const isSplitter = type.startsWith('splitter');
+  const isPipeJunc = type === 'pipeJunc';
 
   const factoryIO = useMemo(() => {
-    if (isSplitter) return ['left:solid:in', 'top:solid:out', 'right:solid:out', 'bottom:solid:out'] as FactoryIO[];
-    return ['top:solid:in', 'left:solid:in', 'bottom:solid:in', 'right:solid:out'] as FactoryIO[];
-  }, [isSplitter]);
+    if (isPipeJunc) return FactoryIODirOrder.map(dir => `${dir}:fluid:${pipeInOut[dir] ?? 'out'}`) as FactoryIO[];
+    if (isSplitter) return ['left:solid:in', 'top:solid:out', 'bottom:solid:out', 'right:solid:out'] satisfies FactoryIO[];
+    return ['left:solid:in', 'top:solid:in', 'bottom:solid:in', 'right:solid:out'] satisfies FactoryIO[];
+  }, [isSplitter, isPipeJunc, pipeInOut]);
 
   return (
     <BaseNode {...props} factoryIO={factoryIO} backgroundColor={defaultNodeColor.logistic}>
-      <div className='flex min-h-24 max-w-48 flex-col items-center justify-center'>
+      <div className='flex h-24 w-24 flex-col items-center justify-center'>
         <p className='text-center font-semibold'>{logisticNames[type]}</p>
       </div>
     </BaseNode>
   );
 }
 
+const capitalize = (s: string) => s[0].toUpperCase() + s.slice(1);
+
 export function LogisticNodeDataEditor(props: NodeDataEditorProps<LogisticNodeData, 'logistic'>) {
   const { node, updateNode } = props;
-  const { type = 'splitter', rules } = node.data;
+  const { type = 'splitter', rules, pipeInOut = { left: 'in' } } = node.data;
 
   return (
     <>
@@ -477,12 +483,41 @@ export function LogisticNodeDataEditor(props: NodeDataEditorProps<LogisticNodeDa
           value={type}
           onChange={e => updateNode({ ...node, data: { ...node.data, type: e.target.value as LogisticNodeData['type'] } })}
         >
-          <option value='splitter'>Splitter</option>
-          <option value='splitterSmart'>Smart Splitter</option>
-          <option value='splitterProg'>Programmable Splitter</option>
-          <option value='merger'>Merger</option>
+          {
+            Object.entries(logisticNames).map(([key, name]) => (
+              <option key={key} value={key}>
+                {name}
+              </option>
+            )) as any
+          }
         </select>
       </label>
+      {type === 'pipeJunc' && (
+        <label htmlFor='pipeInOut' className='form-control w-full'>
+          <div className='label'>
+            <span className='label-text'>Pipe In/Out: </span>
+          </div>
+          <div className='grid grid-cols-4 gap-x-4 px-2'>
+            {FactoryIODirOrder.map(dir => (
+              <Fragment key={dir}>
+                <span>{capitalize(dir)}:</span>
+                <button
+                  type='button'
+                  className='btn btn-square btn-xs ml-3 rounded-sm'
+                  onClick={() =>
+                    updateNode({
+                      ...node,
+                      data: { ...node.data, pipeInOut: { ...pipeInOut, [dir]: pipeInOut[dir] === 'in' ? 'out' : 'in' } },
+                    })
+                  }
+                >
+                  {capitalize(pipeInOut[dir] ?? 'out')}
+                </button>
+              </Fragment>
+            ))}
+          </div>
+        </label>
+      )}
       <BaseNodeEditor {...props} />
     </>
   );
