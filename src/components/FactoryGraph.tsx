@@ -70,6 +70,7 @@ function BaseNode({ children, backgroundColor, factoryIO, id, data, selected }: 
               [tDir === 'top' || tDir === 'bottom' ? 'left' : 'top']: `${offset}%`,
               borderRadius: type === 'fluid' ? undefined : '0',
             }}
+            className='h-2 w-2'
           />
         );
       })}
