@@ -3,7 +3,6 @@ import { useRef, useEffect, type ComponentType, useMemo, useState, useCallback, 
 import type { NodeProps, Node } from 'reactflow';
 import { Handle, Position, useUpdateNodeInternals } from 'reactflow';
 import { useDocs } from '../context/DocsContext';
-import { getFocusedColor } from '../lib/colorUtils';
 import Fuse from 'fuse.js';
 
 export interface NodeDataEditorProps<D extends Record<string, any>, T extends string | undefined = undefined> {
@@ -282,7 +281,7 @@ export function RecipeNode(props: NodeProps<RecipeNodeData>) {
       <div
         className='rounded-md px-4 py-1 text-primary-content outline-offset-2'
         style={{
-          backgroundColor: (selected ? defaultNodeFocusedColor : defaultNodeColor).recipe,
+          backgroundColor: defaultNodeColor.recipe,
           outline: selected ? '2px solid ' + defaultNodeColor.recipe : 'none',
         }}
       >
@@ -300,9 +299,12 @@ export function RecipeNode(props: NodeProps<RecipeNodeData>) {
             <p className='text-pretty text-center font-semibold'>{recipeInfo.displayName}</p>
             <div className='flex flex-nowrap gap-x-0.5'>
               {ingredientInfos?.map(
-                ({ iconPath, displayName }) => iconPath && <img src={iconPath} alt={displayName} className='h-6 w-6' />,
+                ({ iconPath, displayName }) => iconPath && <img key={iconPath} src={iconPath} alt={displayName} className='h-6 w-6' />,
               )}
-              →{productInfos?.map(({ iconPath, displayName }) => iconPath && <img src={iconPath} alt={displayName} className='h-6 w-6' />)}
+              →
+              {productInfos?.map(
+                ({ iconPath, displayName }) => iconPath && <img key={iconPath} src={iconPath} alt={displayName} className='h-6 w-6' />,
+              )}
             </div>
           </>
         ) : (
@@ -335,13 +337,6 @@ export function RecipeNodeDataEditor(props: NodeDataEditorProps<RecipeNodeData, 
         ({ producedIn }) => !machineFilter || producedIn === machineFilter,
       ),
     [recipes, search, machineFilter ?? ''],
-  );
-  const getAnyIcon = useCallback(
-    (key: string) => {
-      if (items[key]?.iconPath) return <img src={items[key].iconPath!} alt={items[key].displayName} className='h-6 w-6' />;
-      return null;
-    },
-    [items],
   );
 
   return (
@@ -404,8 +399,19 @@ export function RecipeNodeDataEditor(props: NodeDataEditorProps<RecipeNodeData, 
                   >
                     <span className='max-w-48 text-pretty'>{displayName}</span>
                     <div className='flex flex-nowrap gap-x-0.5'>
-                      {ingredients?.map(({ itemKey }) => (<>{getAnyIcon(itemKey)}</>) as any)}→
-                      {products?.map(({ itemKey }) => (<>{getAnyIcon(itemKey)}</>) as any)}
+                      {ingredients?.map(({ itemKey }) => {
+                        const item = items[itemKey];
+                        return (
+                          item?.iconPath && <img key={item.iconPath} src={item.iconPath!} alt={item.displayName} className='h-6 w-6' />
+                        );
+                      })}
+                      →
+                      {products?.map(({ itemKey }) => {
+                        const item = items[itemKey];
+                        return (
+                          item?.iconPath && <img key={item.iconPath} src={item.iconPath!} alt={item.displayName} className='h-6 w-6' />
+                        );
+                      })}
                     </div>
                   </button>
                 </li>
@@ -539,10 +545,6 @@ export const defaultNodeColor = {
   recipe: '#F6AD55',
   logistic: '#71DA8F',
 } satisfies Record<NodeTypeKeys, string>;
-
-export const defaultNodeFocusedColor = Object.fromEntries(
-  Object.entries(defaultNodeColor).map(([k, v]) => [k, getFocusedColor(v)]),
-) as Record<NodeTypeKeys, string>;
 
 export const nodeEditors = {
   item: ItemNodeDataEditor,
