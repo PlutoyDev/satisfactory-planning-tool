@@ -86,7 +86,7 @@ export function ProductionGraph() {
         // Viewport Props
         minZoom={0.1}
         snapToGrid={true}
-        snapGrid={[10, 10]}
+        snapGrid={[8, 8]}
         // Event Handlers - General Events
         onInit={setRfInstance}
         // Event Handlers - Selection Events

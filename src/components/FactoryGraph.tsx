@@ -46,7 +46,7 @@ function BaseNode({ children, backgroundColor, factoryIO, id, data, selected }: 
   return (
     <>
       <div
-        className='rounded-md px-4 py-1 text-primary-content outline-offset-2'
+        className='rounded-md p-1.5 text-primary-content outline-offset-2'
         style={{
           backgroundColor: bgColor,
           outline: selected ? '2px solid ' + bgColor : 'none',
@@ -153,7 +153,7 @@ export function ItemNode(props: NodeProps<ItemNodeData>) {
       factoryIO={itemInfo?.form ? [`left:${itemInfo.form}:in`, `right:${itemInfo.form}:out`] : []}
       backgroundColor={defaultNodeColor.item}
     >
-      <div className='flex h-24 w-24 flex-col items-center justify-center'>
+      <div className='flex h-20 w-20 flex-col items-center justify-center'>
         {itemInfo ? (
           <>
             {itemInfo.imgSrc && <img src={itemInfo.imgSrc} alt={itemInfo.itemName} className='h-6 w-6' />}
@@ -293,17 +293,35 @@ export function RecipeNode(props: NodeProps<RecipeNodeData>) {
 
   return (
     <BaseNode {...props} backgroundColor={defaultNodeColor.recipe} factoryIO={factoryIO}>
-      <div className='flex min-h-24 max-w-48 flex-col items-center justify-center'>
+      <div className='flex h-36 w-36 flex-col items-center justify-center'>
         {recipeInfo ? (
           <>
-            <p className='text-pretty text-center font-semibold'>{recipeInfo.displayName}</p>
-            <div className='flex flex-nowrap gap-x-0.5'>
+            {/* <p className='text-pretty text-center font-semibold'>{recipeInfo.displayName}</p> */}
+            <div className='grid grid-flow-col grid-rows-2 place-items-center gap-0.5'>
               {ingredientInfos?.map(
-                ({ iconPath, displayName }) => iconPath && <img key={iconPath} src={iconPath} alt={displayName} className='h-6 w-6' />,
+                ({ iconPath, displayName }, i, { length: l }) =>
+                  iconPath && (
+                    <img
+                      key={iconPath}
+                      src={iconPath}
+                      alt={displayName}
+                      className='h-8 w-8'
+                      style={{ gridRow: l % 2 == 1 && i == l - 1 ? 'span 2 / span 2' : undefined }}
+                    />
+                  ),
               )}
-              →
+              <p className='row-span-2'>➔</p>
               {productInfos?.map(
-                ({ iconPath, displayName }) => iconPath && <img key={iconPath} src={iconPath} alt={displayName} className='h-6 w-6' />,
+                ({ iconPath, displayName }, i, { length: l }) =>
+                  iconPath && (
+                    <img
+                      key={iconPath}
+                      src={iconPath}
+                      alt={displayName}
+                      className='h-8 w-8'
+                      style={{ gridRow: l % 2 == 1 && i == l - 1 ? 'span 2 / span 2' : undefined }}
+                    />
+                  ),
               )}
             </div>
           </>
@@ -405,7 +423,7 @@ export function RecipeNodeDataEditor(props: NodeDataEditorProps<RecipeNodeData, 
                           item?.iconPath && <img key={item.iconPath} src={item.iconPath!} alt={item.displayName} className='h-6 w-6' />
                         );
                       })}
-                      →
+                      ➔
                       {products?.map(({ itemKey }) => {
                         const item = items[itemKey];
                         return (
@@ -465,8 +483,8 @@ export function LogisticNode(props: NodeProps<LogisticNodeData>) {
 
   return (
     <BaseNode {...props} factoryIO={factoryIO} backgroundColor={defaultNodeColor.logistic}>
-      <div className='flex h-24 w-24 flex-col items-center justify-center'>
-        <p className='text-center font-semibold'>{logisticNames[type]}</p>
+      <div className='flex h-8 w-8 flex-col items-center justify-center'>
+        {/* <p className='text-center font-semibold'>{logisticNames[type]}</p> */}
       </div>
     </BaseNode>
   );
