@@ -16,7 +16,9 @@ export interface BaseNodeData {
   bgColor?: string;
 }
 
-type FactoryIO = `${'top' | 'right' | 'bottom' | 'left'}:${'solid' | 'fluid'}:${'in' | 'out'}`;
+const FactoryIODirOrder = ['top', 'right', 'bottom', 'left'] as const;
+type FactoryIODir = (typeof FactoryIODirOrder)[number];
+type FactoryIO = `${FactoryIODir}:${'solid' | 'fluid'}:${'in' | 'out'}`;
 
 export interface BaseNodeProps extends NodeProps<BaseNodeData> {
   children: React.ReactNode;
@@ -27,19 +29,20 @@ export interface BaseNodeProps extends NodeProps<BaseNodeData> {
 function BaseNode({ children, backgroundColor, factoryIO, id, data, selected }: BaseNodeProps) {
   const { rotation = 0, bgColor = backgroundColor } = data;
   const updateNodeInternals = useUpdateNodeInternals();
-  const topArgs: { count: Partial<Record<FactoryIO, number>>; indexs: number[] } = useMemo(() => {
-    const count: Partial<Record<FactoryIO, number>> = {};
+  const topArgs = useMemo(() => {
+    const count: Partial<Record<FactoryIODir, number>> = {};
     const indexs: number[] = [];
     factoryIO.forEach((io, i) => {
-      count[io] = (count[io] ?? 0) + 1;
-      indexs.push(count[io]!);
+      const dir = io.split(':')[0] as FactoryIODir;
+      count[dir] = (count[dir] ?? 0) + 1;
+      indexs.push(count[dir]!);
     });
     return { count, indexs };
   }, [factoryIO, id, updateNodeInternals]);
 
   useEffect(() => {
     updateNodeInternals(id);
-  }, [...factoryIO, rotation, updateNodeInternals]);
+  }, [factoryIO, rotation, updateNodeInternals]);
 
   return (
     <>
@@ -48,27 +51,28 @@ function BaseNode({ children, backgroundColor, factoryIO, id, data, selected }: 
         style={{
           backgroundColor: bgColor,
           outline: selected ? '2px solid ' + bgColor : 'none',
-          transform: `rotate(${rotation}deg)`,
         }}
       >
-        <div style={{ transform: `rotate(${-rotation}deg)` }}>{children}</div>
-        {factoryIO.map((io, i) => {
-          const [dir, type, inOut] = io.split(':') as ['top' | 'right' | 'bottom' | 'left', 'solid' | 'fluid', 'in' | 'out'];
-          const top = (topArgs.indexs[i] / (topArgs.count[io]! + 1)) * 100;
-          return (
-            <Handle
-              key={i}
-              type={inOut === 'in' ? 'target' : 'source'}
-              position={dir as Position}
-              style={{
-                backgroundColor: inOut === 'in' ? '#F6E05E' : '#68D391',
-                top: `${top}%`,
-                borderRadius: type === 'fluid' ? undefined : '0',
-              }}
-            />
-          );
-        })}
+        <div>{children}</div>
       </div>
+      {factoryIO.map((io, i) => {
+        const [dir, type, inOut] = io.split(':') as ['top' | 'right' | 'bottom' | 'left', 'solid' | 'fluid', 'in' | 'out'];
+        const tDir = FactoryIODirOrder[(FactoryIODirOrder.indexOf(dir) + Math.floor(rotation / 90)) % 4];
+        const offset = (topArgs.indexs[i] / (topArgs.count[dir]! + 1)) * 100;
+        return (
+          <Handle
+            id={i.toString()}
+            key={i}
+            type={inOut === 'in' ? 'target' : 'source'}
+            position={tDir as Position}
+            style={{
+              backgroundColor: inOut === 'in' ? '#F6E05E' : '#68D391',
+              [tDir === 'top' || tDir === 'bottom' ? 'left' : 'top']: `${offset}%`,
+              borderRadius: type === 'fluid' ? undefined : '0',
+            }}
+          />
+        );
+      })}
     </>
   );
 }
@@ -86,7 +90,7 @@ function BaseNodeEditor<T extends string>(props: NodeDataEditorProps<BaseNodeDat
         <button
           type='button'
           className='btn btn-square btn-xs rounded-sm'
-          onClick={() => updateData({ rotation: (node.data.rotation ?? 0) - 90 })}
+          onClick={() => updateData({ rotation: ((node.data.rotation ?? 0) - 90) % 360 })}
         >
           ↶
         </button>
@@ -94,7 +98,7 @@ function BaseNodeEditor<T extends string>(props: NodeDataEditorProps<BaseNodeDat
         <button
           type='button'
           className='btn btn-square btn-xs rounded-sm'
-          onClick={() => updateData({ rotation: (node.data.rotation ?? 0) + 90 })}
+          onClick={() => updateData({ rotation: ((node.data.rotation ?? 0) + 90) % 360 })}
         >
           ↷
         </button>
@@ -109,7 +113,7 @@ function BaseNodeEditor<T extends string>(props: NodeDataEditorProps<BaseNodeDat
           type='color'
           className='input input-sm max-h-6'
           // @ts-expect-error
-          defaultValue={node.data.bgColor ?? defaultNodeColor[node.type]}
+          value={node.data.bgColor ?? defaultNodeColor[node.type]}
           onChange={e => updateData({ ...node.data, bgColor: e.target.value })}
         />
 
@@ -231,7 +235,7 @@ export function ItemNodeDataEditor(props: NodeDataEditorProps<ItemNodeData, 'ite
   );
 }
 
-export interface RecipeNodeData {
+export interface RecipeNodeData extends BaseNodeData {
   recipeId?: string;
   /**
    * Clockspeeds in  thousandth of a percent
@@ -240,20 +244,32 @@ export interface RecipeNodeData {
   thouCs?: number;
 }
 
-export function RecipeNode({ id, data, selected }: NodeProps<RecipeNodeData>) {
+export function RecipeNode(props: NodeProps<RecipeNodeData>) {
+  const { data, selected } = props;
   const { items, recipes, productionMachines } = useDocs();
   const { recipeId, thouCs = 10000000 } = data;
-  const updateNodeInternals = useUpdateNodeInternals();
-  const prevRecipeId = useRef(data.recipeId);
+  const res = useMemo(() => {
+    if (!recipeId) return null;
+    const recipeInfo = recipes[recipeId];
+    const machineInfo = productionMachines[recipeInfo.producedIn];
+    const factoryIO: FactoryIO[] = [];
+    const ingredientInfos = recipeInfo.ingredients?.map(({ itemKey }) => {
+      const item = items[itemKey] ?? { displayName: 'Unknown' };
+      const form: 'solid' | 'fluid' = item.form === 'liquid' || item.form === 'gas' ? 'fluid' : 'solid';
+      factoryIO.push(`left:${form}:in`);
+      return item;
+    });
+    const productInfos = recipeInfo.products?.map(({ itemKey }) => {
+      const item = items[itemKey] ?? { displayName: 'Unknown' };
+      const form: 'solid' | 'fluid' = item.form === 'liquid' || item.form === 'gas' ? 'fluid' : 'solid';
+      factoryIO.push(`right:${form}:out`);
+      return item;
+    });
 
-  useEffect(() => {
-    if (prevRecipeId.current !== recipeId) {
-      updateNodeInternals(id);
-      prevRecipeId.current = recipeId;
-    }
+    return { factoryIO, recipeInfo, machineInfo, ingredientInfos, productInfos };
   }, [recipeId]);
 
-  if (!recipeId)
+  if (!res)
     return (
       <div
         className='rounded-md px-4 py-1 text-primary-content outline-offset-2'
@@ -266,31 +282,11 @@ export function RecipeNode({ id, data, selected }: NodeProps<RecipeNodeData>) {
       </div>
     );
 
-  const recipeInfo = recipes[recipeId];
-  const machineInfo = productionMachines[recipeInfo.producedIn];
-  const ingredientInfos = recipeInfo.ingredients?.map(({ itemKey }) => items[itemKey] ?? { displayName: 'Unknown' });
-  const productInfos = recipeInfo.products?.map(({ itemKey }) => items[itemKey] ?? { displayName: 'Unknown' });
+  const { factoryIO, recipeInfo, machineInfo, ingredientInfos, productInfos } = res;
 
   return (
-    <>
-      {ingredientInfos?.map(({ form }, i, { length }) => (
-        <Handle
-          id={`in-${form}-${i}`}
-          type='target'
-          position={Position.Left}
-          style={{
-            backgroundColor: (selected ? defaultNodeFocusedColor : defaultNodeColor).recipe,
-            top: `${((i + 1) / (length + 1)) * 100}%`,
-          }}
-        />
-      ))}
-      <div
-        className='flex min-h-24 max-w-48 flex-col items-center justify-center rounded-md px-4 py-1 text-primary-content outline-offset-2'
-        style={{
-          backgroundColor: (selected ? defaultNodeFocusedColor : defaultNodeColor).recipe,
-          outline: selected ? '2px solid ' + defaultNodeColor.recipe : 'none',
-        }}
-      >
+    <BaseNode {...props} backgroundColor={defaultNodeColor.recipe} factoryIO={factoryIO}>
+      <div className='flex min-h-24 max-w-48 flex-col items-center justify-center'>
         {recipeInfo ? (
           <>
             <p className='text-pretty text-center font-semibold'>{recipeInfo.displayName}</p>
@@ -312,19 +308,7 @@ export function RecipeNode({ id, data, selected }: NodeProps<RecipeNodeData>) {
           <p className='text-center font-semibold'>Unset</p>
         )}
       </div>
-      {productInfos?.map(({ form }, i, { length }) => (
-        <Handle
-          id={`out-${form}-${i}`}
-          type='source'
-          position={Position.Right}
-          style={{
-            backgroundColor: (selected ? defaultNodeFocusedColor : defaultNodeColor).recipe,
-            top: `${((i + 1) / (length + 1)) * 100}%`,
-            borderRadius: form === 'liquid' ? '0' : undefined,
-          }}
-        />
-      ))}
-    </>
+    </BaseNode>
   );
 }
 
@@ -435,11 +419,12 @@ export function RecipeNodeDataEditor(props: NodeDataEditorProps<RecipeNodeData, 
           onChange={e => updateNode({ ...node, data: { ...node.data, thouCs: Math.floor(+e.target.value * 10000) * 10 } })}
         />
       </label>
+      <BaseNodeEditor {...props} />
     </>
   );
 }
 
-export interface LogisticNodeData {
+export interface LogisticNodeData extends BaseNodeData {
   type?: 'splitter' | 'splitterSmart' | 'splitterProg' | 'merger';
   rules?: Record<'left' | 'center' | 'right', 'any' | 'none' | 'anyUndefined' | 'overflow' | `item: ${string}` | `resource: ${string}`>;
 }
@@ -451,103 +436,21 @@ const logisticNames = {
   merger: 'Merger',
 } as const;
 
-export function LogisticNode({ id, data, selected }: NodeProps<LogisticNodeData>) {
-  const updateNodeInternals = useUpdateNodeInternals();
-  const { type = 'splitter', rules } = data;
+export function LogisticNode(props: NodeProps<LogisticNodeData>) {
+  const { type = 'splitter', rules } = props.data;
   const isSplitter = type.startsWith('splitter');
-  const prevIsSplitter = useRef(isSplitter);
 
-  useEffect(() => {
-    if (prevIsSplitter.current !== isSplitter) {
-      prevIsSplitter.current = isSplitter;
-    }
+  const factoryIO = useMemo(() => {
+    if (isSplitter) return ['left:solid:in', 'top:solid:out', 'right:solid:out', 'bottom:solid:out'] as FactoryIO[];
+    return ['top:solid:in', 'left:solid:in', 'bottom:solid:in', 'right:solid:out'] as FactoryIO[];
   }, [isSplitter]);
 
-  if (prevIsSplitter.current !== isSplitter) {
-    updateNodeInternals(id);
-  }
-
-  if (!isSplitter) {
-    return (
-      <>
-        <Handle
-          id='left'
-          type='target'
-          position={Position.Left}
-          style={{ backgroundColor: (selected ? defaultNodeFocusedColor : defaultNodeColor).logistic, top: '25%' }}
-        />
-        <Handle
-          id='center'
-          type='target'
-          position={Position.Left}
-          style={{ backgroundColor: (selected ? defaultNodeFocusedColor : defaultNodeColor).logistic, top: '50%' }}
-        />
-        <Handle
-          id='right'
-          type='target'
-          position={Position.Left}
-          style={{ backgroundColor: (selected ? defaultNodeFocusedColor : defaultNodeColor).logistic, top: '75%' }}
-        />
-        <div
-          className='min-h-24 gap-1 rounded-md px-4 py-1 pt-5 text-primary-content outline-offset-2'
-          style={{
-            backgroundColor: (selected ? defaultNodeFocusedColor : defaultNodeColor).logistic,
-            outline: selected ? '2px solid ' + defaultNodeColor.logistic : 'none',
-          }}
-        >
-          <p className='row-span-3 h-min text-center font-semibold'>{logisticNames[type]}</p>
-        </div>
-        <Handle
-          type='source'
-          position={Position.Right}
-          style={{ backgroundColor: (selected ? defaultNodeFocusedColor : defaultNodeColor).logistic }}
-        />
-      </>
-    );
-  }
-
   return (
-    <>
-      <Handle
-        type='target'
-        position={Position.Left}
-        style={{ backgroundColor: (selected ? defaultNodeFocusedColor : defaultNodeColor).logistic }}
-      />
-      <div
-        className='grid min-h-24 auto-cols-fr grid-flow-col grid-cols-1 grid-rows-3 place-items-center gap-1 rounded-md px-4 py-1 text-primary-content outline-offset-2'
-        style={{
-          backgroundColor: (selected ? defaultNodeFocusedColor : defaultNodeColor).logistic,
-          outline: selected ? '2px solid ' + defaultNodeColor.logistic : 'none',
-        }}
-      >
-        <p className='row-span-3 h-min w-min text-center font-semibold'>{logisticNames[type]}</p>
-        {isSplitter && type !== 'splitter' && (
-          <>
-            <p className='text-center'>Left</p>
-            <p className='text-center'>Center</p>
-            <p className='text-center'>Right</p>
-          </>
-        )}
+    <BaseNode {...props} factoryIO={factoryIO} backgroundColor={defaultNodeColor.logistic}>
+      <div className='flex min-h-24 max-w-48 flex-col items-center justify-center'>
+        <p className='text-center font-semibold'>{logisticNames[type]}</p>
       </div>
-      <Handle
-        id='left'
-        type='source'
-        position={Position.Right}
-        style={{ backgroundColor: (selected ? defaultNodeFocusedColor : defaultNodeColor).logistic, top: '25%' }}
-      />
-      <Handle
-        id='center'
-        type='source'
-        position={Position.Right}
-        style={{ backgroundColor: (selected ? defaultNodeFocusedColor : defaultNodeColor).logistic, top: '50%' }}
-      />
-      <Handle
-        id='right'
-        type='source'
-        position={Position.Right}
-        style={{ backgroundColor: (selected ? defaultNodeFocusedColor : defaultNodeColor).logistic, top: '75%' }}
-      />
-    </>
+    </BaseNode>
   );
 }
 
@@ -573,6 +476,7 @@ export function LogisticNodeDataEditor(props: NodeDataEditorProps<LogisticNodeDa
           <option value='merger'>Merger</option>
         </select>
       </label>
+      <BaseNodeEditor {...props} />
     </>
   );
 }
