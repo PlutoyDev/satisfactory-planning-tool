@@ -6,19 +6,112 @@ import { useDocs } from '../context/DocsContext';
 import { getFocusedColor } from '../lib/colorUtils';
 import Fuse from 'fuse.js';
 
-export interface NodeDataEditorProps<D extends Record<string, any>, T extends string | undefined = string | undefined> {
+export interface NodeDataEditorProps<D extends Record<string, any>, T extends string | undefined = undefined> {
   node: Node<D, T>;
   updateNode: (update: Partial<Node<Partial<D>, T>>) => void;
 }
-export interface ItemNodeData {
+
+export interface BaseNodeData {
+  rotation?: number;
+}
+
+type FactoryIO = `${'top' | 'right' | 'bottom' | 'left'}:${'solid' | 'fluid'}:${'in' | 'out'}`;
+
+export interface BaseNodeProps extends NodeProps<BaseNodeData> {
+  children: React.ReactNode;
+  backgroundColor: string;
+  factoryIO: FactoryIO[];
+}
+
+function BaseNode({ children, backgroundColor, factoryIO, id, data: { rotation = 0 }, selected }: BaseNodeProps) {
+  const updateNodeInternals = useUpdateNodeInternals();
+  const topArgs: { count: Partial<Record<FactoryIO, number>>; indexs: number[] } = useMemo(() => {
+    const count: Partial<Record<FactoryIO, number>> = {};
+    const indexs: number[] = [];
+    factoryIO.forEach((io, i) => {
+      count[io] = (count[io] ?? 0) + 1;
+      indexs.push(count[io]!);
+    });
+    return { count, indexs };
+  }, [factoryIO, id, updateNodeInternals]);
+
+  useEffect(() => {
+    updateNodeInternals(id);
+  }, [...factoryIO, rotation, updateNodeInternals]);
+
+  return (
+    <>
+      <div
+        className='rounded-md px-4 py-1 text-primary-content outline-offset-2'
+        style={{
+          backgroundColor: selected ? (getFocusedColor(backgroundColor) as string) : backgroundColor,
+          outline: selected ? '2px solid ' + defaultNodeColor.item : 'none',
+          transform: `rotate(${rotation}deg)`,
+        }}
+      >
+        <div style={{ transform: `rotate(${-rotation}deg)` }}>{children}</div>
+        {factoryIO.map((io, i) => {
+          const [dir, type, inOut] = io.split(':') as ['top' | 'right' | 'bottom' | 'left', 'solid' | 'fluid', 'in' | 'out'];
+          const top = (topArgs.indexs[i] / (topArgs.count[io]! + 1)) * 100;
+          return (
+            <Handle
+              key={i}
+              type={inOut === 'in' ? 'target' : 'source'}
+              position={dir as Position}
+              style={{
+                backgroundColor: inOut === 'in' ? '#F6E05E' : '#68D391',
+                top: `${top}%`,
+                borderRadius: type === 'fluid' ? undefined : '0',
+              }}
+            />
+          );
+        })}
+      </div>
+    </>
+  );
+}
+
+function BaseNodeEditor<T extends string>(props: NodeDataEditorProps<BaseNodeData, T>) {
+  const { node, updateNode } = props;
+  const updateData = useCallback((d: Partial<BaseNodeData>) => updateNode({ ...node, data: { ...node.data, ...d } }), [updateNode]);
+
+  return (
+    <>
+      <label htmlFor='rotation' className='form-control w-full'>
+        <div className='label'>
+          <span className='label-text'>Rotation: </span>
+        </div>
+        <div className='flex-no-wrap flex w-full flex-row gap-2'>
+          <button
+            type='button'
+            className='btn btn-square btn-xs rounded-sm'
+            onClick={() => updateData({ rotation: (node.data.rotation ?? 0) - 90 })}
+          >
+            ↶
+          </button>
+
+          <button
+            type='button'
+            className='btn btn-square btn-xs rounded-sm'
+            onClick={() => updateData({ rotation: (node.data.rotation ?? 0) + 90 })}
+          >
+            ↷
+          </button>
+        </div>
+      </label>
+    </>
+  );
+}
+
+export interface ItemNodeData extends BaseNodeData {
   /** Item id */
   itemId?: string;
   /** Production speed in item per minute */
   speed?: number;
 }
 
-export function ItemNode({ data, selected }: NodeProps<ItemNodeData>) {
-  const { itemId, speed } = data;
+export function ItemNode(props: NodeProps<ItemNodeData>) {
+  const { itemId, speed } = props.data;
   const itemInfo =
     itemId &&
     useDocs(
@@ -30,37 +123,19 @@ export function ItemNode({ data, selected }: NodeProps<ItemNodeData>) {
     );
 
   return (
-    <>
-      <Handle
-        type='target'
-        position={Position.Left}
-        style={{ backgroundColor: (selected ? defaultNodeFocusedColor : defaultNodeColor).item }}
-      />
-      {
-        <div
-          className='flex min-h-24 flex-col items-center justify-center rounded-md px-4 py-1 text-primary-content outline-offset-2'
-          style={{
-            backgroundColor: (selected ? defaultNodeFocusedColor : defaultNodeColor).item,
-            outline: selected ? '2px solid ' + defaultNodeColor.item : 'none',
-          }}
-        >
-          {itemInfo ? (
-            <>
-              {itemInfo.imgSrc && <img src={itemInfo.imgSrc} alt={itemInfo.itemName} className='h-6 w-6' />}
-              <p className='text-center font-semibold'>{itemInfo.itemName}</p>
-              <p className='text-center'>{speed} / min</p>
-            </>
-          ) : (
-            <p className='text-center font-semibold'>Unset</p>
-          )}
-        </div>
-      }
-      <Handle
-        type='source'
-        position={Position.Right}
-        style={{ backgroundColor: (selected ? defaultNodeFocusedColor : defaultNodeColor).item }}
-      />
-    </>
+    <BaseNode factoryIO={['left:solid:in', 'right:solid:out']} {...props} backgroundColor={defaultNodeColor.item}>
+      <div className='flex min-h-24 flex-col items-center justify-center'>
+        {itemInfo ? (
+          <>
+            {itemInfo.imgSrc && <img src={itemInfo.imgSrc} alt={itemInfo.itemName} className='h-6 w-6' />}
+            <p className='text-center font-semibold'>{itemInfo.itemName}</p>
+            <p className='text-center'>{speed} / min</p>
+          </>
+        ) : (
+          <p className='text-center font-semibold'>Unset</p>
+        )}
+      </div>
+    </BaseNode>
   );
 }
 
@@ -133,6 +208,7 @@ export function ItemNodeDataEditor(props: NodeDataEditorProps<ItemNodeData, 'ite
           onChange={e => +e.target.value && updateNode({ ...node, data: { ...node.data, speed: +e.target.value } })}
         />
       </label>
+      <BaseNodeEditor {...props} />
     </>
   );
 }
@@ -494,7 +570,7 @@ export type NodeTypeKeys = keyof typeof nodeTypes;
 export const nodeTypeKeys = Object.keys(nodeTypes) as NodeTypeKeys[];
 
 export const defaultNodeColor = {
-  item: '#B7A9DA',
+  item: '#76BABF',
   recipe: '#F6AD55',
   logistic: '#71DA8F',
 } satisfies Record<NodeTypeKeys, string>;
