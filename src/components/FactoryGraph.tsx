@@ -13,6 +13,7 @@ export interface NodeDataEditorProps<D extends Record<string, any>, T extends st
 
 export interface BaseNodeData {
   rotation?: number;
+  bgColor?: string;
 }
 
 type FactoryIO = `${'top' | 'right' | 'bottom' | 'left'}:${'solid' | 'fluid'}:${'in' | 'out'}`;
@@ -23,7 +24,8 @@ export interface BaseNodeProps extends NodeProps<BaseNodeData> {
   factoryIO: FactoryIO[];
 }
 
-function BaseNode({ children, backgroundColor, factoryIO, id, data: { rotation = 0 }, selected }: BaseNodeProps) {
+function BaseNode({ children, backgroundColor, factoryIO, id, data, selected }: BaseNodeProps) {
+  const { rotation = 0, bgColor = backgroundColor } = data;
   const updateNodeInternals = useUpdateNodeInternals();
   const topArgs: { count: Partial<Record<FactoryIO, number>>; indexs: number[] } = useMemo(() => {
     const count: Partial<Record<FactoryIO, number>> = {};
@@ -44,8 +46,8 @@ function BaseNode({ children, backgroundColor, factoryIO, id, data: { rotation =
       <div
         className='rounded-md px-4 py-1 text-primary-content outline-offset-2'
         style={{
-          backgroundColor: selected ? (getFocusedColor(backgroundColor) as string) : backgroundColor,
-          outline: selected ? '2px solid ' + defaultNodeColor.item : 'none',
+          backgroundColor: bgColor,
+          outline: selected ? '2px solid ' + bgColor : 'none',
           transform: `rotate(${rotation}deg)`,
         }}
       >
@@ -77,27 +79,43 @@ function BaseNodeEditor<T extends string>(props: NodeDataEditorProps<BaseNodeDat
 
   return (
     <>
-      <label htmlFor='rotation' className='form-control w-full'>
-        <div className='label'>
+      <label htmlFor='rotation' className='flex-no-wrap form-control flex w-full flex-row items-center justify-around gap-x-1 pr-4 '>
+        <div className='label flex-1'>
           <span className='label-text'>Rotation: </span>
         </div>
-        <div className='flex-no-wrap flex w-full flex-row gap-2'>
-          <button
-            type='button'
-            className='btn btn-square btn-xs rounded-sm'
-            onClick={() => updateData({ rotation: (node.data.rotation ?? 0) - 90 })}
-          >
-            ↶
-          </button>
+        <button
+          type='button'
+          className='btn btn-square btn-xs rounded-sm'
+          onClick={() => updateData({ rotation: (node.data.rotation ?? 0) - 90 })}
+        >
+          ↶
+        </button>
 
-          <button
-            type='button'
-            className='btn btn-square btn-xs rounded-sm'
-            onClick={() => updateData({ rotation: (node.data.rotation ?? 0) + 90 })}
-          >
-            ↷
-          </button>
+        <button
+          type='button'
+          className='btn btn-square btn-xs rounded-sm'
+          onClick={() => updateData({ rotation: (node.data.rotation ?? 0) + 90 })}
+        >
+          ↷
+        </button>
+      </label>
+
+      <label htmlFor='bgColor' className='form-control flex w-full flex-row items-center justify-around gap-x-1 pr-4'>
+        <div className='label flex-1'>
+          <span className='label-text'>Background Color: </span>
         </div>
+        <input
+          id='speed'
+          type='color'
+          className='input input-sm max-h-6'
+          // @ts-expect-error
+          defaultValue={node.data.bgColor ?? defaultNodeColor[node.type]}
+          onChange={e => updateData({ ...node.data, bgColor: e.target.value })}
+        />
+
+        <button type='button' className='btn btn-square btn-xs rounded-sm' onClick={() => updateData({ ...node.data, bgColor: undefined })}>
+          ❌
+        </button>
       </label>
     </>
   );
