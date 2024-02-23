@@ -463,9 +463,21 @@ const logisticNames = {
   pipeJunc: 'Pipeline Junction',
 } as const;
 
+const splitterOutputs = ['left', 'center', 'right'] as const;
+type SplitterOutput = (typeof splitterOutputs)[number];
+
+const outputRuleNames = {
+  any: 'Any',
+  none: 'None',
+  anyUndefined: 'Any Undefined',
+  overflow: 'Overflow',
+} as const;
+
+type OutputRuleName = keyof typeof outputRuleNames | `item:${string}`;
+
 export interface LogisticNodeData extends BaseNodeData {
   type?: keyof typeof logisticNames;
-  rules?: Record<'left' | 'center' | 'right', 'any' | 'none' | 'anyUndefined' | 'overflow' | `item: ${string}` | `resource: ${string}`>;
+  rules?: Partial<Record<SplitterOutput, OutputRuleName[]>>;
   pipeInOut?: { left?: 'in' | 'out'; right?: 'in' | 'out'; top?: 'in' | 'out'; bottom?: 'in' | 'out' };
 }
 
@@ -490,8 +502,9 @@ export function LogisticNode(props: NodeProps<LogisticNodeData>) {
 const capitalize = (s: string) => s[0].toUpperCase() + s.slice(1);
 
 export function LogisticNodeDataEditor(props: NodeDataEditorProps<LogisticNodeData, 'logistic'>) {
+  const { items } = useDocs();
   const { node, updateNode } = props;
-  const { type = 'splitter', rules, pipeInOut = { left: 'in' } } = node.data;
+  const { type = 'splitter', rules = { center: ['any'] }, pipeInOut = { left: 'in' } } = node.data;
 
   return (
     <>
@@ -514,6 +527,33 @@ export function LogisticNodeDataEditor(props: NodeDataEditorProps<LogisticNodeDa
           }
         </select>
       </label>
+      {(type === 'splitterSmart' || type === 'splitterProg') && (
+        <label htmlFor='rules' className='form-control w-full'>
+          <div className='label'>
+            <span className='label-text text-pretty'>Rules: </span>
+            {/* <span className='label-text-alt'>
+              <button type='button' className='btn btn-sm'>
+                Configure
+              </button>
+            </span> */}
+          </div>
+          {/* List the rules */}
+          <div className='flex w-full flex-row flex-nowrap items-center justify-around gap-x-2 gap-y-1'>
+            {splitterOutputs.map(dir => (
+              <div key={dir} className='flex flex-col items-center gap-y-1'>
+                <span>{capitalize(dir)}:</span>
+                {(rules?.[dir] ?? ['none']).map(rule => (
+                  <span key={rule} className='badge badge-neutral'>
+                    {rule.startsWith('item:')
+                      ? items[rule.split(':')[1]].displayName
+                      : outputRuleNames[rule as keyof typeof outputRuleNames]}
+                  </span>
+                ))}
+              </div>
+            ))}
+          </div>
+        </label>
+      )}
       {type === 'pipeJunc' && (
         <label htmlFor='pipeInOut' className='form-control w-full'>
           <div className='label'>
