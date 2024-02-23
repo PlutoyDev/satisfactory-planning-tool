@@ -156,8 +156,7 @@ export function ItemNode(props: NodeProps<ItemNodeData>) {
       <div className='flex h-20 w-20 flex-col items-center justify-center'>
         {itemInfo ? (
           <>
-            {itemInfo.imgSrc && <img src={itemInfo.imgSrc} alt={itemInfo.itemName} className='h-6 w-6' />}
-            <p className='text-center font-semibold'>{itemInfo.itemName}</p>
+            {itemInfo.imgSrc && <img src={itemInfo.imgSrc} alt={itemInfo.itemName} className='h-8 w-8' />}
             <p className='text-center'>{speed} / min</p>
           </>
         ) : (
@@ -310,7 +309,7 @@ export function RecipeNode(props: NodeProps<RecipeNodeData>) {
                     />
                   ),
               )}
-              <p className='row-span-2'>➔</p>
+              <p className='row-span-full'>➔</p>
               {productInfos?.map(
                 ({ iconPath, displayName }, i, { length: l }) =>
                   iconPath && (
@@ -483,9 +482,7 @@ export function LogisticNode(props: NodeProps<LogisticNodeData>) {
 
   return (
     <BaseNode {...props} factoryIO={factoryIO} backgroundColor={defaultNodeColor.logistic}>
-      <div className='flex h-8 w-8 flex-col items-center justify-center'>
-        {/* <p className='text-center font-semibold'>{logisticNames[type]}</p> */}
-      </div>
+      <div className='flex h-8 w-8 flex-col items-center justify-center'></div>
     </BaseNode>
   );
 }
