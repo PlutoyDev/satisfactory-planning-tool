@@ -464,14 +464,26 @@ const logisticNames = {
   pipeJunc: 'Pipeline Junction',
 } as const;
 
+const splitterOutputs = ['left', 'right', 'center'] as const;
+type SplitterOutput = (typeof splitterOutputs)[number];
+
+const outputRuleNames = {
+  any: 'Any',
+  none: 'None',
+  anyUndefined: 'Any Undefined',
+  overflow: 'Overflow',
+} as const;
+
+type OutputRuleName = keyof typeof outputRuleNames | `item:${string}`;
+
 export interface LogisticNodeData extends BaseNodeData {
   type?: keyof typeof logisticNames;
-  rules?: Record<'left' | 'center' | 'right', 'any' | 'none' | 'anyUndefined' | 'overflow' | `item: ${string}` | `resource: ${string}`>;
+  rules?: Partial<Record<SplitterOutput, OutputRuleName[]>>;
   pipeInOut?: { left?: 'in' | 'out'; right?: 'in' | 'out'; top?: 'in' | 'out'; bottom?: 'in' | 'out' };
 }
 
 export function LogisticNode(props: NodeProps<LogisticNodeData>) {
-  const { type = 'splitter', rules, pipeInOut = { left: 'in' } } = props.data;
+  const { type = 'splitter', rules = { center: ['any'] }, pipeInOut = { left: 'in' } } = props.data;
   const isSplitter = type.startsWith('splitter');
   const isPipeJunc = type === 'pipeJunc';
 
@@ -483,9 +495,7 @@ export function LogisticNode(props: NodeProps<LogisticNodeData>) {
 
   return (
     <BaseNode {...props} factoryIO={factoryIO} backgroundColor={defaultNodeColor.logistic}>
-      <div className='flex h-8 w-8 flex-col items-center justify-center'>
-        {/* <p className='text-center font-semibold'>{logisticNames[type]}</p> */}
-      </div>
+      <div className='flex h-8 w-8 flex-col items-center justify-center'></div>
     </BaseNode>
   );
 }
@@ -494,7 +504,24 @@ const capitalize = (s: string) => s[0].toUpperCase() + s.slice(1);
 
 export function LogisticNodeDataEditor(props: NodeDataEditorProps<LogisticNodeData, 'logistic'>) {
   const { node, updateNode } = props;
-  const { type = 'splitter', rules, pipeInOut = { left: 'in' } } = node.data;
+  const { type = 'splitter', rules = {}, pipeInOut = { left: 'in' } } = node.data;
+  const [smartOutputConfiguring, setSmartOutputConfiguring] = useState<null | SplitterOutput>(null);
+  // const smartDropdownRef = useRef<HTMLDetailsElement>(null);
+  const [search, setSearch] = useState('');
+  const { items } = useDocs();
+  const options = useMemo(() => {
+    const options: [string, { label: string; value: string; icon?: string }][] = [];
+    for (const [key, name] of Object.entries(outputRuleNames)) {
+      // TODO: Find icons for these
+      options.push([key, { label: name, value: key }]);
+    }
+    for (const item of Object.values(items)) {
+      options.push([`item:${item.key}`, { label: item.displayName, value: item.key, icon: item.iconPath ?? undefined }]);
+    }
+    return Object.fromEntries(options);
+  }, [items]);
+  const ruleFuse = useMemo(() => new Fuse(Object.values(options), { keys: ['label'] }), [options]);
+  const filtered = useMemo(() => (search ? ruleFuse.search(search).map(({ item }) => item) : Object.values(options)), [search, ruleFuse]);
 
   return (
     <>
@@ -517,6 +544,66 @@ export function LogisticNodeDataEditor(props: NodeDataEditorProps<LogisticNodeDa
           }
         </select>
       </label>
+      {/* {(type === 'splitterSmart' || type === 'splitterProg') && (
+        <label htmlFor='rules' className='form-control w-full'>
+          <div className='label'>
+            <span className='label-text'>{logisticNames[type]} Rules:</span>
+          </div>
+          <details className='dropdown dropdown-top w-full' open={smartOutputConfiguring !== null}>
+            <summary className='hidden' />
+            {
+              <div className='dropdown-content right-0 z-10 w-72 rounded-box bg-base-200 p-2 shadow-sm'>
+                <input
+                  type='text'
+                  className='input input-sm input-bordered mb-1 w-full'
+                  placeholder='Search...'
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                />
+                <ul className='clean-scrollbar menu menu-horizontal menu-sm h-48 w-full overflow-y-scroll'>
+                  {filtered.map(({ value, icon, label }) => (
+                    <li className='w-full' key={value}>
+                      <button
+                        className='btn btn-sm btn-block items-start justify-start'
+                        type='button'
+                        onClick={e => {
+                          if (smartOutputConfiguring !== null) {
+                            updateNode({ ...node, data: { ...node.data, [smartOutputConfiguring]: value } });
+                            setSmartOutputConfiguring(null);
+                          }
+                        }}
+                      >
+                        {icon && <img src={icon} alt={label} className='h-6 w-6' />}
+                        {label}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            }
+          </details>
+          <div className='flex w-full flex-col items-center justify-around gap-y-2'>
+            {splitterOutputs.map(output => (
+              <button
+                type='button'
+                className='btn btn-square btn-xs w-full flex-1 grid-flow-row grid-cols-5 justify-start p-1'
+                key={output}
+                onClick={() => {
+                  if (smartOutputConfiguring === output) setSmartOutputConfiguring(null);
+                  else if (smartOutputConfiguring === null) setSmartOutputConfiguring(output);
+                  else {
+                    setSmartOutputConfiguring(null);
+                    setTimeout(() => setSmartOutputConfiguring(output), 100);
+                  }
+                }}
+              >
+                <span className='row-span-full'>{capitalize(output)}</span>
+                {rules[output]?.map(rule => <span key={rule}>{options[rule].label}</span>)}
+              </button>
+            ))}
+          </div>
+        </label>
+      )} */}
       {type === 'pipeJunc' && (
         <label htmlFor='pipeInOut' className='form-control w-full'>
           <div className='label'>
