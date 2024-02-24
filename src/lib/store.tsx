@@ -38,6 +38,26 @@ type DeboucedCollectedChanges = {
   edgeChanged: Set<string>;
 };
 
+type ProcessedChanges = {
+  nodesDeleted?: string[];
+  nodesChanged?: Node[];
+  edgesDeleted?: string[];
+  edgesChanged?: Edge[];
+};
+
+const createDeboucedCollectedChanges = (): DeboucedCollectedChanges => ({
+  nodeDeleted: new Set(),
+  nodeChanged: new Set(),
+  edgeDeleted: new Set(),
+  edgeChanged: new Set(),
+});
+
+type PredictionControl = {
+  layout: 'manifold' | 'loadbalanced';
+  recipeIndex: number;
+  maxOverclocking: false | number;
+};
+
 interface AppState {
   loading?: false | 'docsJson' | 'infos' | 'productionLine';
 
@@ -86,8 +106,13 @@ interface AppState {
   deboucedChanges: () => void;
   deboucedCallback: () => void;
 
-  partialSave: (collectedChanges: DeboucedCollectedChanges) => void;
-  predict: (collectedChanges: DeboucedCollectedChanges) => void;
+  partialSave: (collectedChanges: ProcessedChanges) => void;
+  /** Map of node id and handle id to item and required (-) / produced (+) speed */
+  dcHandles: Map<`${string}-${string}`, { itemKey: string; speed: number }>;
+  detectDcHandles: (collectedChanges: ProcessedChanges) => void;
+  /** Map of node id and handle id to prediction control */
+  predictionControls: Map<string, PredictionControl>;
+  generatePredictionControl: (id: `${string}-${string}`, update?: Partial<PredictionControl>) => void;
 
   /**
    * Update the node data
@@ -113,7 +138,7 @@ interface AppState {
   onDrop: (event: DragEvent<HTMLDivElement>) => void;
 }
 
-export function createApplicaionStore(navigate: NavigateFn, { recipes }: Docs) {
+export function createApplicaionStore(navigate: NavigateFn, { items, recipes }: Docs) {
   return createStore<AppState>((set, get) => ({
     productionLineInfos: [],
     setProductionLineInfos: infos => {
@@ -168,55 +193,63 @@ export function createApplicaionStore(navigate: NavigateFn, { recipes }: Docs) {
         .then(() => set({ saving: false, isSaved: true }))
         .catch(error => set({ error }));
     },
-    collectedChanges: {
-      nodeDeleted: new Set(),
-      nodeChanged: new Set(),
-      edgeDeleted: new Set(),
-      edgeChanged: new Set(),
-    },
+    collectedChanges: createDeboucedCollectedChanges(),
     deboucingTimeout: undefined,
     deboucedChanges: () => {
       const { deboucingTimeout, deboucedCallback } = get();
       if (deboucingTimeout) {
         clearTimeout(deboucingTimeout);
       }
-      const timeout = setTimeout(deboucedCallback, 1000);
+      const timeout = setTimeout(deboucedCallback, 5000);
       set({ deboucingTimeout: timeout });
     },
     deboucedCallback: () => {
-      const { deboucingTimeout, collectedChanges, partialSave, predict } = get();
+      const { nodes, edges, deboucingTimeout, collectedChanges, partialSave, detectDcHandles } = get();
       if (deboucingTimeout) {
         clearTimeout(deboucingTimeout);
       }
-      partialSave(collectedChanges);
-      predict(collectedChanges);
+
+      set({ deboucingTimeout: undefined, collectedChanges: createDeboucedCollectedChanges() });
+      // Process the collected changes
+      const { nodeDeleted, nodeChanged, edgeDeleted, edgeChanged } = collectedChanges;
+      const nd = Array.from(nodeDeleted).filter(id => !id.startsWith('predict'));
+      const nc = nodes.filter(n => nodeChanged.has(n.id) && !nodeDeleted.has(n.id) && !n.id.startsWith('predict'));
+      const ed = Array.from(edgeDeleted).filter(id => !id.startsWith('predict'));
+      const ec = edges.filter(e => edgeChanged.has(e.id) && !edgeDeleted.has(e.id) && !e.id.startsWith('predict'));
+
+      if (nd.length === 0 && nc.length === 0 && ed.length === 0 && ec.length === 0) {
+        // Nothing to do
+        return;
+      }
+
+      const processedChanges = {
+        nodesDeleted: nd.length > 0 ? nd : undefined,
+        nodesChanged: nc.length > 0 ? nc : undefined,
+        edgesDeleted: ed.length > 0 ? ed : undefined,
+        edgesChanged: ec.length > 0 ? ec : undefined,
+      };
+
+      partialSave(processedChanges);
+      detectDcHandles(processedChanges);
     },
-    partialSave: collectedChanges => {
-      const { selInfo, nodes, edges } = get();
+    partialSave: processedChanges => {
+      const { selInfo } = get();
       if (!selInfo) {
         return;
       }
 
       set({ saving: 'productionLine' });
 
-      const { nodeDeleted, nodeChanged, edgeDeleted, edgeChanged } = collectedChanges;
-      const nd = Array.from(nodeDeleted);
-      const nc = nodes.filter(n => nodeChanged.has(n.id) && !nodeDeleted.has(n.id));
-      const ed = Array.from(edgeDeleted);
-      const ec = edges.filter(e => edgeChanged.has(e.id) && !edgeDeleted.has(e.id));
-
       savePartialProductionLineToIdb({
         prodLineId: selInfo.id,
-        nodesDeleted: nd.length > 0 ? nd : undefined,
-        nodesChanged: nc.length > 0 ? nc : undefined,
-        edgesDeleted: ed.length > 0 ? ed : undefined,
-        edgesChanged: ec.length > 0 ? ec : undefined,
+        ...processedChanges,
       })
         .then(() => set({ saving: false, isSaved: true }))
         .catch(error => set({ error }));
     },
-    predict: collectedChanges => {
-      const { nodes, edges } = get() as { nodes: FactoryNodeProperties[]; edges: Edge[] };
+    dcHandles: new Map(),
+    detectDcHandles: processedChanges => {
+      const { nodes, edges, dcHandles } = get();
       const nonPredictedNodes = nodes.filter(n => !n.id.startsWith('predict'));
       const nonPredictedEdges = edges.filter(e => !e.id.startsWith('predict'));
 
@@ -240,7 +273,6 @@ export function createApplicaionStore(navigate: NavigateFn, { recipes }: Docs) {
       // Recipe node handle count depends on the ingredients and products
       // gather the disconnected handles and their required/produced speed
 
-      const dcHandles = new Map<`${string}-${string}`, { itemKey: string; speed: number }>(); // Map of node id and handle id to item and required (-) / produced (+) speed
       for (const node of nonPredictedNodes) {
         const { source, target } = groupedEdges.get(node.id) || { source: [], target: [] };
         if (node.type === 'item') {
@@ -281,8 +313,65 @@ export function createApplicaionStore(navigate: NavigateFn, { recipes }: Docs) {
           }
         }
       }
+    },
+    predictionControls: new Map(),
+    generatePredictionControl: (id, update) => {
+      const [nodeId, handleId] = id.split(':');
+      const { predictionControls, nodes, edges, dcHandles } = get();
+      const toFulfill = dcHandles.get(id);
+      let control = predictionControls.get(id) || { layout: 'manifold', recipeIndex: 0, maxOverclocking: false };
+      control = { ...control, ...update };
+      predictionControls.set(id, control);
+      // remove all nodes and edges with id starting with 'predict:{node+handleId}:{nanoid}'
+      let nodeToPredict: FactoryNodeProperties | undefined = undefined;
+      const nodesToRemove = new Set<string>();
+      for (const node of nodes) {
+        if (node.id.startsWith(`predict:${id}:`)) {
+          nodesToRemove.add(node.id);
+        }
+        if (node.id === nodeId) {
+          nodeToPredict = node as FactoryNodeProperties;
+        }
+      }
+      const edgesToRemove = new Set<string>();
+      for (const edge of edges) {
+        if (edge.id.startsWith(`predict:${id}:`)) {
+          edgesToRemove.add(edge.id);
+        }
+      }
 
-      console.log('predict', { dcHandlesReq: dcHandles, groupedEdges });
+      if (!nodeToPredict || !toFulfill) {
+        return;
+      }
+
+      const {
+        position: nodePosition,
+        data: { rotation },
+      } = nodeToPredict;
+      const { layout, recipeIndex, maxOverclocking } = control;
+      const { itemKey, speed } = toFulfill;
+
+      const usableRecipes = speed > 0 ? items[itemKey].ingredientOf : items[itemKey].productOf;
+
+      if (!usableRecipes || usableRecipes.length === 0) {
+        return;
+      }
+
+      const recipeId = usableRecipes[recipeIndex % usableRecipes.length];
+      const recipe = recipes[recipeId];
+
+      if (!recipe) {
+        return;
+      }
+
+      const { ingredients, products, manufactoringDuration } = recipe;
+      const baseAmount = (speed > 0 ? products : ingredients).find(p => p.itemKey === itemKey)?.amount;
+      if (!baseAmount) {
+        return;
+      }
+      const baseSpeed = (baseAmount * 60) / manufactoringDuration;
+      const targetSpeed = Math.abs(speed);
+      const speedRatio = targetSpeed / baseSpeed;
     },
     updateNodeData: (data, id) => {
       const nodes = get().nodes;
