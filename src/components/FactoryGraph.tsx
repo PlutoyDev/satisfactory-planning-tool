@@ -458,7 +458,7 @@ export function RecipeNodeDataEditor(props: NodeDataEditorProps<RecipeNodeData, 
 const logisticNames = {
   splitter: 'Splitter',
   splitterSmart: 'Smart Splitter',
-  splitterProg: 'Programmable Splitter',
+  splitterPro: 'Programmable Splitter',
   merger: 'Merger',
   pipeJunc: 'Pipeline Junction',
 } as const;
@@ -505,6 +505,53 @@ export function LogisticNodeDataEditor(props: NodeDataEditorProps<LogisticNodeDa
   const { items } = useDocs();
   const { node, updateNode } = props;
   const { type = 'splitter', rules = { center: ['any'] }, pipeInOut = { left: 'in' } } = node.data;
+  const updateSmartProOutput = useCallback(
+    (dir: SplitterOutput, rule: string, selected: boolean | undefined) => {
+      if (type === 'splitterSmart') {
+        updateNode({ ...node, data: { ...node.data, rules: { ...rules, [dir]: selected ? ['none'] : [rule as OutputRuleName] } } });
+      } else if (rule === 'none') {
+        updateNode({ ...node, data: { ...node.data, rules: { ...rules, [dir]: ['none'] } } });
+      } else if (selected) {
+        const newRules = rules[dir]?.filter(r => r !== rule && r !== 'none');
+        updateNode({ ...node, data: { ...node.data, rules: { ...rules, [dir]: newRules?.length ? newRules : undefined } } });
+      } else {
+        const newRules = (rules[dir]?.filter(r => r !== 'none') ?? []).concat(rule as OutputRuleName);
+        updateNode({ ...node, data: { ...node.data, rules: { ...rules, [dir]: newRules } } });
+      }
+    },
+    [updateNode, type, rules],
+  );
+  const [smartOutputConfiguring, setSmartOutputConfiguring] = useState<null | SplitterOutput>(null);
+  // const smartDropdownRef = useRef<HTMLDetailsElement>(null);
+  const [search, setSearch] = useState('');
+  const options = useMemo(() => {
+    const options: [string, { label: string; value: string; icon?: string }][] = [];
+    for (const [key, name] of Object.entries(outputRuleNames)) {
+      // TODO: Find icons for these
+      options.push([key, { label: name, value: key }]);
+    }
+    for (const item of Object.values(items)) {
+      options.push([`item:${item.key}`, { label: item.displayName, value: `item:${item.key}`, icon: item.iconPath ?? undefined }]);
+    }
+    return Object.fromEntries(options);
+  }, [items]);
+  const ruleFuse = useMemo(() => new Fuse(Object.values(options), { keys: ['label'] }), [options]);
+  const listedOptions = useMemo(() => {
+    // List of options to display with search and selected options
+    if (smartOutputConfiguring === null) return [];
+    let listedOptions: { label: string; value: string; icon?: string; selected?: boolean }[] = [];
+    let selectedKeys = rules[smartOutputConfiguring] ?? [];
+    const res = search ? ruleFuse.search(search) : Object.values(options);
+    for (const val of res) {
+      const item = 'item' in val ? val.item : val;
+      if (selectedKeys.includes(item.value as OutputRuleName)) {
+        listedOptions.unshift({ ...item, selected: true });
+      } else {
+        listedOptions.push({ ...item, selected: false });
+      }
+    }
+    return listedOptions;
+  }, [rules, smartOutputConfiguring, search, ruleFuse, options, updateSmartProOutput]);
 
   return (
     <>
@@ -527,29 +574,71 @@ export function LogisticNodeDataEditor(props: NodeDataEditorProps<LogisticNodeDa
           }
         </select>
       </label>
-      {(type === 'splitterSmart' || type === 'splitterProg') && (
+      {(type === 'splitterSmart' || type === 'splitterPro') && (
         <label htmlFor='rules' className='form-control w-full'>
           <div className='label'>
             <span className='label-text text-pretty'>Rules: </span>
-            {/* <span className='label-text-alt'>
-              <button type='button' className='btn btn-sm'>
-                Configure
-              </button>
-            </span> */}
           </div>
-          {/* List the rules */}
-          <div className='flex w-full flex-row flex-nowrap items-center justify-around gap-x-2 gap-y-1'>
-            {splitterOutputs.map(dir => (
-              <div key={dir} className='flex flex-col items-center gap-y-1'>
-                <span>{capitalize(dir)}:</span>
-                {(rules?.[dir] ?? ['none']).map(rule => (
-                  <span key={rule} className='badge badge-neutral'>
-                    {rule.startsWith('item:')
-                      ? items[rule.split(':')[1]].displayName
-                      : outputRuleNames[rule as keyof typeof outputRuleNames]}
-                  </span>
-                ))}
+          <details className='dropdown dropdown-top w-full' open={smartOutputConfiguring !== null}>
+            <summary className='hidden' />
+            {
+              <div className='dropdown-content right-0 z-10 w-72 rounded-box bg-base-200 p-2 shadow-sm'>
+                <input
+                  type='text'
+                  className='input input-sm input-bordered mb-1 w-full'
+                  placeholder='Search...'
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                />
+                <ul className='clean-scrollbar menu menu-horizontal menu-sm h-48 w-full overflow-y-scroll'>
+                  {listedOptions.map(({ value, icon, label, selected }) => (
+                    <li className='w-full' key={value}>
+                      <button
+                        className={`btn btn-sm btn-block items-start justify-start ${selected ? 'btn-secondary' : ''}`}
+                        type='button'
+                        onClick={() => {
+                          updateSmartProOutput(smartOutputConfiguring!, value, selected);
+                          setSmartOutputConfiguring(null);
+                        }}
+                      >
+                        {icon && <img src={icon} alt={label} className='h-6 w-6' />}
+                        {label}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
               </div>
+            }
+          </details>
+          {/* List the rules */}
+          <div className='grid grid-flow-col grid-cols-[auto_auto_auto] grid-rows-2 place-items-center gap-x-4 gap-y-1'>
+            {splitterOutputs.map(dir => (
+              <>
+                <button
+                  type='button'
+                  key={dir}
+                  className='btn btn-sm gap-y-1 text-xs'
+                  onClick={() => {
+                    if (smartOutputConfiguring === dir) setSmartOutputConfiguring(null);
+                    else if (smartOutputConfiguring === null) setSmartOutputConfiguring(dir);
+                    else {
+                      setSmartOutputConfiguring(null);
+                      setTimeout(() => setSmartOutputConfiguring(dir), 100);
+                    }
+                  }}
+                >
+                  <span>{capitalize(dir)}</span>
+                </button>
+                <div className='flex flex-col flex-wrap gap-2'>
+                  {(rules?.[dir] ?? ['none']).map(rule => (
+                    <p key={rule} className='w-full max-w-full text-pretty text-center text-xs'>
+                      {rule.startsWith('item:')
+                        ? items[rule.split(':')[1]].displayName
+                        : outputRuleNames[rule as keyof typeof outputRuleNames]}
+                    </p>
+                  ))}
+                </div>
+              </>
             ))}
           </div>
         </label>

@@ -152,7 +152,7 @@ function NodeDataEditorPanel() {
   if (!selNode || !selNode.type || !(selNode.type in nodeEditors)) {
     return (
       <Panel position='bottom-right'>
-        <div className='w-64 rounded-md bg-base-100 p-2 shadow-lg first:rounded-t-md last:rounded-b-md [&>*]:w-full '>
+        <div className='min-w-64 rounded-md bg-base-100 p-2 shadow-lg first:rounded-t-md last:rounded-b-md [&>*]:w-full '>
           <h3 className='whitespace-nowrap font-bold'>Node Property</h3>
           <hr className='mt-1 pt-2' />
           <p>{!selNode ? 'No node selected / found' : 'incompatible node'}</p>
@@ -164,7 +164,7 @@ function NodeDataEditorPanel() {
   const Editor = nodeEditors[selNode.type as NodeTypeKeys];
   return (
     <Panel position='bottom-right'>
-      <div className='w-64 rounded-md bg-base-100 p-2 shadow-lg first:rounded-t-md last:rounded-b-md [&>*]:w-full '>
+      <div className='min-w-64 rounded-md bg-base-100 p-2 shadow-lg first:rounded-t-md last:rounded-b-md [&>*]:w-full '>
         <h3 className='whitespace-nowrap font-bold'>Node Property</h3>
         <hr className='mt-1 pt-2' />
 
