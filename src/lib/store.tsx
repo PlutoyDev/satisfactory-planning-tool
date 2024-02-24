@@ -14,7 +14,17 @@ import {
 } from './productionLineDb';
 
 import type { DragEvent } from 'react';
-import type { Node, Edge, Viewport, OnNodesChange, OnEdgesChange, OnConnect, ReactFlowInstance, OnSelectionChangeFunc } from 'reactflow';
+import type {
+  Node,
+  Edge,
+  Viewport,
+  OnNodesChange,
+  OnEdgesChange,
+  OnConnect,
+  ReactFlowInstance,
+  OnSelectionChangeFunc,
+  NodeChange,
+} from 'reactflow';
 import type { NodeTypeKeys } from '../components/FactoryGraph';
 import { pick } from 'lodash';
 import { ProductionLineInfo } from './productionLine';
@@ -335,7 +345,7 @@ export function createApplicaionStore(navigate: NavigateFn) {
     },
     onConnect: conn => {
       // const eEdges = get().edges;
-      const { edges: eEdges, onEdgesChange } = get();
+      const { edges: eEdges, onEdgesChange, onSelectionChange } = get();
 
       if (!conn.source || !conn.target) {
         return;
@@ -345,30 +355,35 @@ export function createApplicaionStore(navigate: NavigateFn) {
         return;
       }
 
-      onEdgesChange([
-        {
-          type: 'add',
-          item: {
-            id: nanoid(),
-            type: 'smoothstep',
-            data: {},
-            source: conn.source!,
-            target: conn.target!,
-            sourceHandle: conn.sourceHandle === null ? undefined : conn.sourceHandle,
-            targetHandle: conn.targetHandle === null ? undefined : conn.targetHandle,
-          },
-        },
-      ]);
+      const edge: Edge = {
+        id: nanoid(),
+        type: 'smoothstep',
+        data: {},
+        source: conn.source!,
+        target: conn.target!,
+        sourceHandle: conn.sourceHandle === null ? undefined : conn.sourceHandle,
+        targetHandle: conn.targetHandle === null ? undefined : conn.targetHandle,
+        selected: true,
+      };
+
+      onEdgesChange([{ type: 'add', item: edge }]);
+      onSelectionChange({ nodes: [], edges: [edge] });
     },
     onDrop: e => {
       e.preventDefault();
-      const { nodes, rfInstance } = get();
+      const { rfInstance, selNode, onNodesChange, onSelectionChange } = get();
       const type = e.dataTransfer.getData('application/reactflow') as NodeTypeKeys;
       if (!type || !rfInstance) {
         return;
       }
       const position = rfInstance.screenToFlowPosition({ x: e.clientX, y: e.clientY });
-      set({ nodes: [...nodes, { id: nanoid(), type, position, data: {}, selected: true }] });
+      const node = { id: nanoid(), type, position, selected: true, data: {} };
+      const changes: NodeChange[] = [{ type: 'add', item: node }];
+      if (selNode) {
+        changes.push({ type: 'select', id: selNode.id, selected: false });
+      }
+      onNodesChange(changes);
+      onSelectionChange({ nodes: [node], edges: [] });
     },
     onSelectionChange: ({ nodes, edges }) => {
       const { selNode, selEdge } = get();
