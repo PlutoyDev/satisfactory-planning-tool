@@ -24,8 +24,8 @@ export function AppShell() {
   return (
     <ErrorBoundary FallbackComponent={ErrorFallback}>
       <div>
-        <ProductionLineStoreProvider>
-          <DocsProvider LoaderComponent={<div className='skeleton h-screen w-screen' />}>
+        <DocsProvider LoaderComponent={<div className='skeleton h-screen w-screen' />}>
+          <ProductionLineStoreProvider>
             <div className='p absolute z-0 h-full w-full pl-20 pr-4 pt-2'>
               <Route path='/'>
                 <Home />
@@ -37,8 +37,8 @@ export function AppShell() {
               </Route>
             </div>
             <Sidebar />
-          </DocsProvider>
-        </ProductionLineStoreProvider>
+          </ProductionLineStoreProvider>
+        </DocsProvider>
       </div>
     </ErrorBoundary>
   );

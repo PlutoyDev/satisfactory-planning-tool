@@ -1,7 +1,7 @@
 import { ComponentType, createContext, useContext, useEffect, useMemo, useState } from 'react';
 import useLegacyEffect from '../hooks/useLegacyEffect';
 
-interface Docs {
+export interface Docs {
   items: Record<string, Item>;
   recipes: Record<string, Recipe>;
   productionMachines: Record<string, ProductionMachine>;

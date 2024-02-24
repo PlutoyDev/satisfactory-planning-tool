@@ -27,6 +27,7 @@ export interface BaseNodeProps extends NodeProps<BaseNodeData> {
 
 function BaseNode({ children, backgroundColor, factoryIO, id, data, selected }: BaseNodeProps) {
   const { rotation = 0, bgColor = backgroundColor } = data;
+  const isPrediction = id.startsWith('prediction');
   const updateNodeInternals = useUpdateNodeInternals();
   const topArgs = useMemo(() => {
     const count: Partial<Record<FactoryIODir, number>> = {};
@@ -49,7 +50,8 @@ function BaseNode({ children, backgroundColor, factoryIO, id, data, selected }: 
         className='rounded-md p-1.5 text-primary-content outline-offset-2'
         style={{
           backgroundColor: bgColor,
-          outline: selected ? '2px solid ' + bgColor : 'none',
+          outline: !isPrediction && selected ? '2px solid ' + bgColor : 'none',
+          opacity: isPrediction ? 0.3 : 1,
         }}
       >
         <div>{children}</div>
@@ -68,6 +70,7 @@ function BaseNode({ children, backgroundColor, factoryIO, id, data, selected }: 
               backgroundColor: inOut === 'in' ? '#F6E05E' : '#68D391',
               [tDir === 'top' || tDir === 'bottom' ? 'left' : 'top']: `${offset}%`,
               borderRadius: type === 'fluid' ? undefined : '0',
+              opacity: isPrediction ? 0.3 : 1,
             }}
             className='h-2 w-2'
           />

@@ -25,11 +25,18 @@ import type {
   OnSelectionChangeFunc,
   NodeChange,
 } from 'reactflow';
-import type { NodeTypeKeys } from '../components/FactoryGraph';
+import type { NodeTypeKeys, FactoryNodeProperties } from '../components/FactoryGraph';
 import { pick } from 'lodash';
 import { ProductionLineInfo } from './productionLine';
+import { Docs, useDocs } from '../context/DocsContext';
 
 type NavigateFn = ReturnType<typeof useLocation>[1];
+type DeboucedCollectedChanges = {
+  nodeDeleted: Set<string>;
+  nodeChanged: Set<string>;
+  edgeDeleted: Set<string>;
+  edgeChanged: Set<string>;
+};
 
 interface AppState {
   loading?: false | 'docsJson' | 'infos' | 'productionLine';
@@ -74,15 +81,13 @@ interface AppState {
   selNode?: Node;
   selEdge?: Edge;
 
-  collectedChanges: {
-    nodeDeleted: Set<string>;
-    nodeChanged: Set<string>;
-    edgeDeleted: Set<string>;
-    edgeChanged: Set<string>;
-  };
-  partialSave: () => void;
-  deboucingPartialSaveTimeout?: number;
-  deboucedPartialSave: () => void;
+  collectedChanges: DeboucedCollectedChanges;
+  deboucingTimeout?: number;
+  deboucedChanges: () => void;
+  deboucedCallback: () => void;
+
+  partialSave: (collectedChanges: DeboucedCollectedChanges) => void;
+  predict: (collectedChanges: DeboucedCollectedChanges) => void;
 
   /**
    * Update the node data
@@ -108,7 +113,7 @@ interface AppState {
   onDrop: (event: DragEvent<HTMLDivElement>) => void;
 }
 
-export function createApplicaionStore(navigate: NavigateFn) {
+export function createApplicaionStore(navigate: NavigateFn, { recipes }: Docs) {
   return createStore<AppState>((set, get) => ({
     productionLineInfos: [],
     setProductionLineInfos: infos => {
@@ -169,22 +174,31 @@ export function createApplicaionStore(navigate: NavigateFn) {
       edgeDeleted: new Set(),
       edgeChanged: new Set(),
     },
-    partialSave: () => {
-      const { selInfo, nodes, edges, collectedChanges } = get();
+    deboucingTimeout: undefined,
+    deboucedChanges: () => {
+      const { deboucingTimeout, deboucedCallback } = get();
+      if (deboucingTimeout) {
+        clearTimeout(deboucingTimeout);
+      }
+      const timeout = setTimeout(deboucedCallback, 1000);
+      set({ deboucingTimeout: timeout });
+    },
+    deboucedCallback: () => {
+      const { deboucingTimeout, collectedChanges, partialSave, predict } = get();
+      if (deboucingTimeout) {
+        clearTimeout(deboucingTimeout);
+      }
+      partialSave(collectedChanges);
+      predict(collectedChanges);
+    },
+    partialSave: collectedChanges => {
+      const { selInfo, nodes, edges } = get();
       if (!selInfo) {
         return;
       }
-      console.log('partialSave', collectedChanges);
 
-      set({
-        saving: 'productionLine',
-        collectedChanges: {
-          nodeDeleted: new Set(),
-          nodeChanged: new Set(),
-          edgeDeleted: new Set(),
-          edgeChanged: new Set(),
-        },
-      });
+      set({ saving: 'productionLine' });
+
       const { nodeDeleted, nodeChanged, edgeDeleted, edgeChanged } = collectedChanges;
       const nd = Array.from(nodeDeleted);
       const nc = nodes.filter(n => nodeChanged.has(n.id) && !nodeDeleted.has(n.id));
@@ -201,15 +215,74 @@ export function createApplicaionStore(navigate: NavigateFn) {
         .then(() => set({ saving: false, isSaved: true }))
         .catch(error => set({ error }));
     },
-    deboucingPartialSaveTimeout: undefined,
-    deboucedPartialSave: () => {
-      const { deboucingPartialSaveTimeout, partialSave } = get();
-      console.log('deboucedPartialSave');
-      if (deboucingPartialSaveTimeout) {
-        clearTimeout(deboucingPartialSaveTimeout);
+    predict: collectedChanges => {
+      const { nodes, edges } = get() as { nodes: FactoryNodeProperties[]; edges: Edge[] };
+      const nonPredictedNodes = nodes.filter(n => !n.id.startsWith('predict'));
+      const nonPredictedEdges = edges.filter(e => !e.id.startsWith('predict'));
+
+      // Group the edges by source and target
+      const groupedEdges = new Map<string, { source: Edge[]; target: Edge[] }>();
+      for (const edge of nonPredictedEdges) {
+        const source = (groupedEdges.get(edge.source) || { source: [], target: [] }).source;
+        source.push(edge);
+        if (!groupedEdges.has(edge.source)) {
+          groupedEdges.set(edge.source, { source, target: [] });
+        }
+
+        const target = (groupedEdges.get(edge.target) || { source: [], target: [] }).target;
+        target.push(edge);
+        if (!groupedEdges.has(edge.target)) {
+          groupedEdges.set(edge.target, { source: [], target });
+        }
       }
-      const timeout = setTimeout(partialSave, 10000);
-      set({ deboucingPartialSaveTimeout: timeout });
+
+      // Item node has 2 handles, 1 for input and 1 for output
+      // Recipe node handle count depends on the ingredients and products
+      // gather the disconnected handles and their required/produced speed
+
+      const dcHandles = new Map<`${string}-${string}`, { itemKey: string; speed: number }>(); // Map of node id and handle id to item and required (-) / produced (+) speed
+      for (const node of nonPredictedNodes) {
+        const { source, target } = groupedEdges.get(node.id) || { source: [], target: [] };
+        if (node.type === 'item') {
+          if (!node.data.itemId || !node.data.speed) continue;
+          // 0 for input, 1 for output according to factoryIO array in source code
+          const hasInputEdge = target.some(e => e.targetHandle === '0');
+          if (!hasInputEdge) {
+            dcHandles.set(`${node.id}-0`, { itemKey: node.data.itemId, speed: -node.data.speed });
+          }
+          const hasOutputEdge = source.some(e => e.sourceHandle === '1');
+          if (!hasOutputEdge) {
+            dcHandles.set(`${node.id}-1`, { itemKey: node.data.itemId, speed: node.data.speed });
+          }
+        } else if (node.type === 'recipe') {
+          if (!node.data.recipeId) continue;
+          const recipe = recipes[node.data.recipeId];
+          if (!recipe || !recipe.ingredients || !recipe.products) continue;
+          // id is indexed by ingredient then product
+          const { manufactoringDuration: durationSec, ingredients, products } = recipe;
+          const duration = durationSec / 60;
+          const numHandles = ingredients.length + products.length;
+          for (let i = 0; i < numHandles; i++) {
+            if (i < ingredients.length) {
+              const hasInputEdge = target.some(e => e.targetHandle === `${i}`);
+              if (!hasInputEdge) {
+                const { itemKey, amount } = recipe.ingredients[i];
+                const speed = -amount / duration;
+                dcHandles.set(`${node.id}-${i}`, { itemKey, speed });
+              }
+            } else {
+              const hasOutputEdge = source.some(e => e.sourceHandle === `${i - ingredients.length}`);
+              if (!hasOutputEdge) {
+                const { itemKey, amount } = recipe.products[i - ingredients.length];
+                const speed = amount / duration;
+                dcHandles.set(`${node.id}-${i}`, { itemKey, speed });
+              }
+            }
+          }
+        }
+      }
+
+      console.log('predict', { dcHandlesReq: dcHandles, groupedEdges });
     },
     updateNodeData: (data, id) => {
       const nodes = get().nodes;
@@ -230,7 +303,7 @@ export function createApplicaionStore(navigate: NavigateFn) {
       set({ edges: edges.map(e => (e.id === id ? { ...e, data } : e)), isSaved: false });
     },
     onNodesChange: changes => {
-      const { nodes: eNodes, selNode, deboucedPartialSave, collectedChanges } = get();
+      const { nodes: eNodes, selNode, deboucedChanges, collectedChanges } = get();
       const changedMap = new Map<string, Node>();
       const saveableChangeNodeIds = new Set<string>();
       const deleteNodeIds = new Set<string>();
@@ -293,12 +366,12 @@ export function createApplicaionStore(navigate: NavigateFn) {
       if (saveableChangeNodeIds.size > 0 || deleteNodeIds.size > 0) {
         saveableChangeNodeIds.forEach(id => collectedChanges.nodeChanged.add(id));
         deleteNodeIds.forEach(id => collectedChanges.nodeDeleted.add(id));
-        deboucedPartialSave();
+        deboucedChanges();
       }
     },
     onEdgesChange: changes => {
       // const eEdges = get().edges;
-      const { edges: eEdges, selEdge, deboucedPartialSave, collectedChanges } = get();
+      const { edges: eEdges, selEdge, deboucedChanges, collectedChanges } = get();
       const changedMap = new Map<string, Edge>();
       const saveableChangeEdgeIds = new Set<string>();
       const removeEdgeIds = new Set<string>();
@@ -340,7 +413,7 @@ export function createApplicaionStore(navigate: NavigateFn) {
       if (saveableChangeEdgeIds.size > 0 || removeEdgeIds.size > 0) {
         saveableChangeEdgeIds.forEach(id => collectedChanges.edgeChanged.add(id));
         removeEdgeIds.forEach(id => collectedChanges.edgeDeleted.add(id));
-        deboucedPartialSave();
+        deboucedChanges();
       }
     },
     onConnect: conn => {
@@ -410,10 +483,11 @@ const ProductionLineStoreContext = createContext<ProductionLineStore>(null!);
 
 // The production line provider
 export function ProductionLineStoreProvider({ children }: { children: React.ReactNode }) {
+  const docs = useDocs();
   const navigate = useLocation()[1];
   const storeRef = useRef<ProductionLineStore>();
   if (!storeRef.current) {
-    storeRef.current = createApplicaionStore(navigate);
+    storeRef.current = createApplicaionStore(navigate, docs);
   }
   return <ProductionLineStoreContext.Provider value={storeRef.current}>{children}</ProductionLineStoreContext.Provider>;
 }
