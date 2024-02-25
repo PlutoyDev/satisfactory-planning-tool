@@ -26,6 +26,7 @@ import type {
   NodeChange,
   NodeRemoveChange,
   EdgeRemoveChange,
+  XYPosition,
 } from 'reactflow';
 import type { NodeTypeKeys, FactoryNodeProperties } from '../components/FactoryGraph';
 import { pick } from 'lodash';
@@ -321,10 +322,11 @@ export function createApplicaionStore(navigate: NavigateFn, { items, recipes }: 
           if (!hasInputEdge) {
             dcHandles.set(`${node.id}-0`, { itemKey: node.data.itemId, speed: -node.data.speed });
           }
-          const hasOutputEdge = source.some(e => e.sourceHandle === '1');
-          if (!hasOutputEdge) {
-            dcHandles.set(`${node.id}-1`, { itemKey: node.data.itemId, speed: node.data.speed });
-          }
+          // ! Removed to splify logic (generated prediction for input is enough for now)
+          // const hasOutputEdge = source.some(e => e.sourceHandle === '1');
+          // if (!hasOutputEdge) {
+          //   dcHandles.set(`${node.id}-1`, { itemKey: node.data.itemId, speed: node.data.speed });
+          // }
         } else if (node.type === 'recipe') {
           const { recipeId, storedCs = StoredClockspeed.FromPercent(100) } = node.data;
           if (!node.data.recipeId) continue;
@@ -342,13 +344,14 @@ export function createApplicaionStore(navigate: NavigateFn, { items, recipes }: 
                 const speed = (-amount / duration) * StoredClockspeed.ToDecimal(storedCs);
                 dcHandles.set(`${node.id}-${i}`, { itemKey, speed });
               }
-            } else {
-              const hasOutputEdge = source.some(e => e.sourceHandle === `${i - ingredients.length}`);
+              // ! Removed to splify logic (generated prediction for input is enough for now)
+              /* } else {
+                const hasOutputEdge = source.some(e => e.sourceHandle === `${i - ingredients.length}`);
               if (!hasOutputEdge) {
                 const { itemKey, amount } = recipe.products[i - ingredients.length];
                 const speed = (amount / duration) * StoredClockspeed.ToDecimal(storedCs);
                 dcHandles.set(`${node.id}-${i}`, { itemKey, speed });
-              }
+              } */
             }
           }
         }
@@ -357,7 +360,7 @@ export function createApplicaionStore(navigate: NavigateFn, { items, recipes }: 
     predictionControls: new Map(),
     generatePrediction: (id, update) => {
       const [nodeId, handleId] = id.split('-');
-      const { predictionControls, nodes, edges, dcHandles } = get();
+      const { predictionControls, nodes, edges, dcHandles, onNodesChange, onEdgesChange } = get();
       const toFulfill = dcHandles.get(id);
       let control = predictionControls.get(id) || { layout: 'manifold', recipeIndex: 0 };
       control = { ...control, ...update };
@@ -415,13 +418,77 @@ export function createApplicaionStore(navigate: NavigateFn, { items, recipes }: 
       const itemSpeedNeeded = Math.abs(speed);
       const speedRatio = itemSpeedNeeded / itemSpeedAtHundredPercent;
       const minMachineCount = Math.ceil(speedRatio / StoredClockspeed.ToDecimal(maxStoredCs)); // Min machine count to fulfill the item speed needed and maxOverclocking
-      const clockspeedForMinMachineCount = Math.floor((itemSpeedNeeded * 100_000) / minMachineCount);
+      const clockspeedForMinMachineCount = StoredClockspeed.FromDecimal(itemSpeedNeeded / minMachineCount);
 
       //Create the nodes and edges
-      const predictNodes: FactoryNodeProperties[] = [];
+      const predictNodes: (FactoryNodeProperties | Node<null, 'group'>)[] = [];
       const predictEdges: Edge[] = [];
 
+      // Node sizes: recipe node 160x160, item node 100x100, logistic node 50x50
+      // TODO: Move to a constant,
+      const nodeSize = {
+        recipe: { width: 160, height: 160 },
+        item: { width: 100, height: 100 },
+        logistic: { width: 50, height: 50 },
+      };
+
+      // Get rough position for the prediction nodes
+      let position: XYPosition;
+      // if speed is negative, the input is needed, so the prediction node should be placed to the left of unorienated recipe node
+
+      const { x, y } = nodePosition;
+      position = { x: x + Math.sign(speed) * (nodeSize[nodeToPredict.type ?? 'recipe'].width + 20), y: nodeSize.logistic.height / 2 };
+
+      // if rotated (0, 90, 180 or 270), the position should be adjusted, rotate it with origin at the node position
+      if (rotation) {
+        const angle = (rotation / 180) * Math.PI;
+        const dx = position.x - x;
+        const dy = position.y - y;
+        position = {
+          x: x + dx * Math.cos(angle) - dy * Math.sin(angle),
+          y: y + dx * Math.sin(angle) + dy * Math.cos(angle),
+        };
+      }
+
+      if (minMachineCount === 1) {
+        const p1NodeId = `predict:${id}:${nanoid()}`;
+        predictNodes.push({
+          id: p1NodeId,
+          type: 'recipe',
+          position,
+          data: { recipeId, storedCs: clockspeedForMinMachineCount },
+        });
+        predictEdges.push({ id: `predict:${id}:${nanoid()}`, source: p1NodeId, target: nodeId, sourceHandle: '0', targetHandle: handleId });
+      } else {
+        console.warn('More than 1 machine is needed, not implemented yet');
+        // If more than 1 machine is needed, need to use a splitters and mergers, to achieve the speed.
+        // For now, we are just doing inputs prediction, hence we will work backwards, from (input of current node) to (manifold of mergers) to (output of recipe node)
+        // for (let i = 0; i < minMachineCount; i++) {
+        //   const logisticNodePos = { x: position.x + , y: position.y + (i * nodeSize.logistic.height) / 2 };
+        //   const logisticNodeId = `predict:${id}:${nanoid()}`;
+        //   predictNodes.push({
+        //     id: logisticNodeId,
+        //     type: 'logistic',
+        //     position: logisticNodePos,
+        //     data: { type: 'merger' },
+        //   });
+        //   position = {
+        //     x: logisticNodePos.x - nodeSize.logistic.width / 2 + nodeSize.recipe.width / 2,
+        //     y: logisticNodePos.y - nodeSize.logistic.height / 2 + nodeSize.recipe.height / 2,
+        //   };
+        // }
+      }
+
       // Create node group
+      // const predictGroup: Node<null, 'group'> = {
+      //   id: `predict:${id}:group`,
+      //   type: 'group',
+      //   position: nodePosition,
+      //   data: null,
+      // };
+
+      onNodesChange(predictNodes.map(n => ({ type: 'add', item: n })));
+      onEdgesChange(predictEdges.map(e => ({ type: 'add', item: e })));
     },
     updateNodeData: (data, id) => {
       const nodes = get().nodes;
