@@ -88,6 +88,29 @@ for (const doc of docs) {
   });
 }
 
+function sortRecipes(recipeIds: string[]) {
+  return recipeIds.sort((a, b) => {
+    const recipeA = results.recipes[a];
+    const recipeB = results.recipes[b];
+    // Sort by isAlternate, then by ingredients length, then by products length, then by recipe name
+    if (recipeA.displayName.startsWith('Alternate') && !recipeB.displayName.startsWith('Alternate')) {
+      return 1;
+    } else if (!recipeA.displayName.startsWith('Alternate') && recipeB.displayName.startsWith('Alternate')) {
+      return -1;
+    } else if (recipeA.ingredients.length < recipeB.ingredients.length) {
+      return -1;
+    } else if (recipeA.ingredients.length > recipeB.ingredients.length) {
+      return 1;
+    } else if (recipeA.products.length < recipeB.products.length) {
+      return -1;
+    } else if (recipeA.products.length > recipeB.products.length) {
+      return 1;
+    } else {
+      return recipeA.displayName.localeCompare(recipeB.displayName);
+    }
+  });
+}
+
 // PostProcess
 // Add recipeKeys to items and resources
 for (const item of Object.values(results.items)) {
@@ -103,11 +126,11 @@ for (const item of Object.values(results.items)) {
   }
 
   if (productOf.length > 0) {
-    item.productOf = productOf;
+    item.productOf = sortRecipes(productOf);
   }
 
   if (ingredientOf.length > 0) {
-    item.ingredientOf = ingredientOf;
+    item.ingredientOf = sortRecipes(ingredientOf);
   }
 
   if (productOf.length === 0 && ingredientOf.length === 0) {

@@ -34,7 +34,7 @@ export type Recipe = {
   key: string;
   displayName: string;
   manufactoringDuration: number;
-  ingredients?: { itemKey: string; amount: number }[];
+  ingredients: { itemKey: string; amount: number }[];
   products: { itemKey: string; amount: number }[];
   producedIn: string;
 };
