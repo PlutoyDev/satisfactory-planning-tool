@@ -4,6 +4,7 @@ import type { NodeProps, Node } from 'reactflow';
 import { Handle, Position, useUpdateNodeInternals } from 'reactflow';
 import { useDocs } from '../context/DocsContext';
 import Fuse from 'fuse.js';
+import StoredClockspeed from '../utils/clockspeed';
 
 export interface NodeDataEditorProps<D extends Record<string, any>, T extends string | undefined = undefined> {
   node: Node<D, T>;
@@ -246,17 +247,13 @@ export function ItemNodeDataEditor(props: NodeDataEditorProps<ItemNodeData, 'ite
 
 export interface RecipeNodeData extends BaseNodeData {
   recipeId?: string;
-  /**
-   * Clockspeeds in  thousandth of a percent
-   *
-   * clockspeed = (thouCs / 100000)%*/
-  thouCs?: number;
+  storedCs?: number;
 }
 
 export function RecipeNode(props: NodeProps<RecipeNodeData>) {
   const { data, selected } = props;
   const { items, recipes, productionMachines } = useDocs();
-  const { recipeId, thouCs = 10000000 } = data;
+  const { recipeId, storedCs = StoredClockspeed.FromDecimal(1) } = data;
   const res = useMemo(() => {
     if (!recipeId) return null;
     const recipeInfo = recipes[recipeId];
@@ -332,7 +329,7 @@ export function RecipeNode(props: NodeProps<RecipeNodeData>) {
         )}
         {machineInfo ? (
           <p className='text-center'>
-            {Math.floor(thouCs / 10) / 10000}% {machineInfo.displayName}
+            {StoredClockspeed.ToPercent(storedCs)}% {machineInfo.displayName}
           </p>
         ) : (
           <p className='text-center font-semibold'>Unset</p>
@@ -449,8 +446,8 @@ export function RecipeNodeDataEditor(props: NodeDataEditorProps<RecipeNodeData, 
           type='number'
           step='0.01'
           className='input input-sm input-bordered appearance-none'
-          defaultValue={node.data.thouCs ? Math.floor(node.data.thouCs / 10) / 10000 : 100}
-          onChange={e => updateNode({ ...node, data: { ...node.data, thouCs: Math.floor(+e.target.value * 10000) * 10 } })}
+          value={node.data.storedCs ? StoredClockspeed.ToPercent(node.data.storedCs) : 100}
+          onChange={e => updateNode({ ...node, data: { ...node.data, storedCs: StoredClockspeed.FromPercent(+e.target.value) } })}
         />
       </label>
       <BaseNodeEditor {...props} />
