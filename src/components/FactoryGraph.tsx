@@ -90,7 +90,7 @@ function BaseNodeEditor<T extends string>(props: NodeDataEditorProps<BaseNodeDat
         <button
           type='button'
           className='btn btn-square btn-xs rounded-sm'
-          onClick={() => updateData({ rotation: ((node.data.rotation ?? 0) - 90) % 360 })}
+          onClick={() => updateData({ rotation: ((node.data.rotation ?? 0) + 270) % 360 })}
         >
           ↶
         </button>
