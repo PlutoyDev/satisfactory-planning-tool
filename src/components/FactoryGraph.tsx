@@ -28,7 +28,7 @@ export interface BaseNodeProps extends NodeProps<BaseNodeData> {
 
 function BaseNode({ children, backgroundColor, factoryIO, id, data, selected }: BaseNodeProps) {
   const { rotation = 0, bgColor = backgroundColor } = data;
-  const isPrediction = id.startsWith('prediction');
+  const isPrediction = id.startsWith('predict');
   const updateNodeInternals = useUpdateNodeInternals();
   const topArgs = useMemo(() => {
     const count: Partial<Record<FactoryIODir, number>> = {};
