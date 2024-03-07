@@ -134,6 +134,8 @@ export interface ItemNodeData extends BaseNodeData {
   itemId?: string;
   /** Production speed in item per minute */
   speed?: number;
+  /** IO Control */
+  io?: 'both' | 'in' | 'out';
 }
 
 export function ItemNode(props: NodeProps<ItemNodeData>) {
