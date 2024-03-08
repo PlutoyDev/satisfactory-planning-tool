@@ -99,14 +99,14 @@ export function computeRecipeNode({ data, d }: ComputeArgs<RecipeNodeData>): nul
 }
 
 export function computeLogisticNode({ data, d, connectedResult }: ComputeArgs<LogisticNodeData>): null | ComputeResult {
-  const { type, rules, pipeInOut = { left: 'in' } } = data;
+  const { type, rules = { center: ['any'] }, pipeInOut = { left: 'in' } } = data;
 
   //Logistic Node are a bit more complex as the result is dependent on what is connected to it
 
   const inventory: Map<string, number> = new Map();
   const itemSpeed: Partial<Record<FactoryIndexedIO, ItemSpeed[]>> = {};
   const factoryIO: FactoryIndexedIO[] = [];
-  const usedIndex: number[] = [];
+  const unusedIndex: number[] = [0, 1, 2, 3];
 
   // Sum all the input and output by itemId
   for (const [key, value] of Object.entries(connectedResult)) {
@@ -115,17 +115,22 @@ export function computeLogisticNode({ data, d, connectedResult }: ComputeArgs<Lo
         if (!inventory.has(itemId)) {
           inventory.set(itemId, 0);
         }
-        inventory.set(itemId, inventory.get(itemId)! + speed);
+        const newSpeed = inventory.get(itemId)! + speed;
+        if (newSpeed === 0) {
+          inventory.delete(itemId);
+        } else {
+          inventory.set(itemId, newSpeed);
+        }
       }
       // Provide the negative speed if there is a connection (for validation)
       itemSpeed[key as FactoryIndexedIO] = value.map(({ itemId, speed }) => ({ itemId, speed: -speed }));
       factoryIO.push(key as FactoryIndexedIO);
-      usedIndex.push(parseInt(key.split(':')[3]));
+      unusedIndex.splice(unusedIndex.indexOf(Number(key.split(':')[3])), 1);
     }
   }
 
-  let remainingOutCount: number;
-  let remainingInCount: number;
+  let remainingOutCount = 0;
+  let remainingInCount = 0;
 
   if (type === 'pipeJunc') {
     // Pipe Junctions
@@ -135,11 +140,51 @@ export function computeLogisticNode({ data, d, connectedResult }: ComputeArgs<Lo
       return { factoryIO };
     }
 
-    for (const [dir, io] of Object.entries(pipeInOut)) {
+    for (const idx of unusedIndex) {
+      const dir = FactoryIODirOrder[idx];
+      if (pipeInOut[dir] === 'in') remainingInCount++;
+      else remainingOutCount++;
     }
   } else {
     //Conveyor Splitter/Merger
+    if (type === 'merger') {
+      if (unusedIndex.includes(2) /* right = output */) remainingOutCount++;
+      remainingInCount = unusedIndex.length - remainingOutCount;
+    } else {
+      if (unusedIndex.includes(0) /* left = input */) remainingInCount++;
+
+      if (type == 'splitter') {
+        remainingOutCount = unusedIndex.length - remainingInCount;
+      } else {
+        // for smart/pro splitter, count all "any" and "overflow" rules (so that the remaining can be "distributed")
+        remainingOutCount = Object.values(rules).reduce((acc, cur) => (cur.some(r => ['any', 'overflow'].includes(r)) ? acc + 1 : acc), 0);
+      }
+    }
   }
 
-  // Add the remaining direction, and divide the remaining inventory by the number of remaining direction
+  //  divide the remaining inventory by the number of remaining direction
+  for (const idx of unusedIndex) {
+    const dir = FactoryIODirOrder[idx];
+    let form: 'solid' | 'fluid';
+    let io: 'in' | 'out';
+    if (type === 'pipeJunc') {
+      form = 'fluid';
+      io = pipeInOut[dir] ?? 'out';
+    } else {
+      form = 'solid';
+      io = (type === 'merger' ? dir !== 'right' : dir === 'left') ? 'in' : 'out';
+    }
+    const id: FactoryIndexedIO = `${dir}:${form}:${io}:${idx as 0 | 1 | 2 | 3}`;
+    factoryIO.push(id);
+    itemSpeed[id] = [];
+    if (inventory.size > 0) {
+      for (const [itemId, speed] of inventory) {
+        if (speed !== 0) {
+          itemSpeed[id]!.push({ itemId, speed: -speed / (io === 'in' ? remainingInCount : remainingOutCount) });
+        }
+      }
+    }
+  }
+
+  return { factoryIO, itemSpeed };
 }
