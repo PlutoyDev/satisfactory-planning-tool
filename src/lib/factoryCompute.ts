@@ -59,7 +59,7 @@ interface RecipeComputeResult extends ComputeResult {
   items: Item[];
 }
 
-export function computeRecipeNode({ data, d, connectedResult }: ComputeArgs<RecipeNodeData>): null | RecipeComputeResult {
+export function computeRecipeNode({ data, d }: ComputeArgs<RecipeNodeData>): null | RecipeComputeResult {
   const { recipeId, storedCs = StoredClockspeed.FromDecimal(1) } = data;
 
   if (!recipeId) return null;
@@ -96,4 +96,50 @@ export function computeRecipeNode({ data, d, connectedResult }: ComputeArgs<Reci
   }
 
   return { factoryIO, itemSpeed, recipe, items };
+}
+
+export function computeLogisticNode({ data, d, connectedResult }: ComputeArgs<LogisticNodeData>): null | ComputeResult {
+  const { type, rules, pipeInOut = { left: 'in' } } = data;
+
+  //Logistic Node are a bit more complex as the result is dependent on what is connected to it
+
+  const inventory: Map<string, number> = new Map();
+  const itemSpeed: Partial<Record<FactoryIndexedIO, ItemSpeed[]>> = {};
+  const factoryIO: FactoryIndexedIO[] = [];
+  const usedIndex: number[] = [];
+
+  // Sum all the input and output by itemId
+  for (const [key, value] of Object.entries(connectedResult)) {
+    if (value) {
+      for (const { itemId, speed } of value) {
+        if (!inventory.has(itemId)) {
+          inventory.set(itemId, 0);
+        }
+        inventory.set(itemId, inventory.get(itemId)! + speed);
+      }
+      // Provide the negative speed if there is a connection (for validation)
+      itemSpeed[key as FactoryIndexedIO] = value.map(({ itemId, speed }) => ({ itemId, speed: -speed }));
+      factoryIO.push(key as FactoryIndexedIO);
+      usedIndex.push(parseInt(key.split(':')[3]));
+    }
+  }
+
+  let remainingOutCount: number;
+  let remainingInCount: number;
+
+  if (type === 'pipeJunc') {
+    // Pipe Junctions
+    if (inventory.size > 1) {
+      // Pipe Junctions can't have different fluid in the same pipe
+      console.error("Pipe Junctions can't have different items in the same pipe", connectedResult);
+      return { factoryIO };
+    }
+
+    for (const [dir, io] of Object.entries(pipeInOut)) {
+    }
+  } else {
+    //Conveyor Splitter/Merger
+  }
+
+  // Add the remaining direction, and divide the remaining inventory by the number of remaining direction
 }
