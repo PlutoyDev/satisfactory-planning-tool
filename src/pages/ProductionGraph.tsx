@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback, type ComponentType } from 'react';
-import { ReactFlow, Panel, Background, useReactFlow, ConnectionLineType, ConnectionMode } from 'reactflow';
+import { ReactFlow, Panel, Background, useReactFlow, ConnectionLineType, ConnectionMode } from '@xyflow/react';
 import {
   ArrowsPointingOutIcon,
   ArrowsPointingInIcon,
@@ -177,7 +177,7 @@ function NodeDataEditorPanel() {
         <Editor
           // @ts-expect-error
           node={selNode}
-          updateNode={u => onNodesChange([{ type: 'reset', item: { ...selNode, ...u } }])}
+          updateNode={u => onNodesChange([{ type: 'replace', id: selNode.id, item: { ...selNode, ...u } }])}
         />
       </div>
     </Panel>

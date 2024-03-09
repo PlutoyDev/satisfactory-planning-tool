@@ -1,5 +1,5 @@
 import * as idb from 'idb';
-import type { Node, Edge, Viewport } from 'reactflow';
+import type { Node, Edge, Viewport } from '@xyflow/react';
 import type { ProductionLineInfo, SavedNode, SavedEdge } from './productionLine';
 import { convertToSavedEdge, convertToSavedNode } from './productionLine';
 import omit from 'lodash/omit';

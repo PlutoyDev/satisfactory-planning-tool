@@ -26,7 +26,7 @@ import type {
   NodeRemoveChange,
   EdgeRemoveChange,
   IsValidConnection,
-} from 'reactflow';
+} from '@xyflow/react';
 import type { NodeTypeKeys, FactoryNodeProperties } from '../components/FactoryGraph';
 import { pick } from 'lodash';
 import { ProductionLineInfo } from './productionLine';
@@ -457,9 +457,9 @@ export function createApplicaionStore(navigate: NavigateFn, { items, recipes }: 
           saveableChangeNodeIds.add(change.item.id);
         } else if (change.type === 'remove') {
           deleteNodeIds.add(change.id);
-        } else if (change.type === 'reset') {
-          changedMap.set(change.item.id, change.item);
-          saveableChangeNodeIds.add(change.item.id);
+        } else if (change.type === 'replace') {
+          changedMap.set(change.id, change.item);
+          saveableChangeNodeIds.add(change.id);
         } else {
           let node = changedMap.get(change.id);
           if (!node) {
@@ -479,7 +479,8 @@ export function createApplicaionStore(navigate: NavigateFn, { items, recipes }: 
               saveableChangeNodeIds.add(node.id);
             }
             if (positionAbsolute) {
-              node.positionAbsolute = positionAbsolute;
+              node.computed ??= {};
+              node.computed.positionAbsolute = change.positionAbsolute;
             }
             if (dragging !== undefined) {
               node.dragging = dragging;
@@ -487,15 +488,20 @@ export function createApplicaionStore(navigate: NavigateFn, { items, recipes }: 
           } else if (change.type === 'dimensions') {
             const { dimensions, resizing } = change;
             if (dimensions) {
-              node.width = dimensions.width;
-              node.height = dimensions.height;
+              node.computed ??= {};
+              node.computed.width = dimensions.width;
+              node.computed.height = dimensions.height;
+              if (resizing) {
+                node.width = dimensions.width;
+                node.height = dimensions.height;
+              }
             }
+
             if (resizing !== undefined) {
               node.resizing = resizing;
             }
           } else if (change.type === 'select') {
-            const { selected } = change;
-            node.selected = selected;
+            node.selected = change.selected;
           }
         }
       }
@@ -525,9 +531,9 @@ export function createApplicaionStore(navigate: NavigateFn, { items, recipes }: 
           saveableChangeEdgeIds.add(change.item.id);
         } else if (change.type === 'remove') {
           removeEdgeIds.add(change.id);
-        } else if (change.type === 'reset') {
-          changedMap.set(change.item.id, change.item);
-          saveableChangeEdgeIds.add(change.item.id);
+        } else if (change.type === 'replace') {
+          changedMap.set(change.id, change.item);
+          saveableChangeEdgeIds.add(change.id);
         } else {
           let edge = changedMap.get(change.id);
           if (!edge) {

@@ -1,4 +1,4 @@
-import { getSmoothStepPath, ConnectionLineComponentProps } from 'reactflow';
+import { getSmoothStepPath, ConnectionLineComponentProps } from '@xyflow/react';
 import { useProductionLineStore } from '../lib/store';
 
 export function ConnectionLine({

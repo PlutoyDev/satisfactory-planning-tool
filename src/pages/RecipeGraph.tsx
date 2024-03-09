@@ -1,12 +1,5 @@
 // Full recipe graph containing all default and alternates.
-import ReactFlow, {
-  useNodesState,
-  useEdgesState,
-  addEdge,
-  Controls,
-  MiniMap,
-  Background,
-} from 'reactflow';
+import ReactFlow, { useNodesState, useEdgesState, addEdge, Controls, MiniMap, Background } from '@xyflow/react';
 
 interface DocsItem {
   key: string;
@@ -38,9 +31,7 @@ interface Docs {
 }
 
 function fetchDocs() {
-  return fetch('/simplified-docs.json').then(res =>
-    res.json()
-  ) as Promise<Docs>;
+  return fetch('/simplified-docs.json').then(res => res.json()) as Promise<Docs>;
 }
 
 export function FullRecipeGraph() {}

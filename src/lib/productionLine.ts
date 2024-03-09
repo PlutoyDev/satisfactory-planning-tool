@@ -1,4 +1,4 @@
-import type { Node, Edge, Viewport } from 'reactflow';
+import type { Node, Edge, Viewport } from '@xyflow/react';
 import pick from 'lodash/pick';
 
 export interface ProductionLineInfo {

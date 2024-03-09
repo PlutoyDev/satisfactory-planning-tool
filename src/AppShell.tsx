@@ -7,7 +7,7 @@ import ProductionGraph, { routePattern } from './pages/ProductionGraph';
 import AppLogo from './components/AppLogo';
 import { ErrorBoundary, FallbackProps } from 'react-error-boundary';
 import { DocsProvider } from './context/DocsContext';
-import { ReactFlowProvider } from 'reactflow';
+import { ReactFlowProvider } from '@xyflow/react';
 import { ProductionLineStoreProvider, useProductionLineStore } from './lib/store';
 import useLegacyEffect from './hooks/useLegacyEffect';
 

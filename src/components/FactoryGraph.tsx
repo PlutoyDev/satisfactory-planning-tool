@@ -1,8 +1,8 @@
 // Reactflow custom nodes
 import Fuse from 'fuse.js';
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ComponentType, CSSProperties } from 'react';
-import type { Node, NodeProps } from 'reactflow';
-import { Handle, Position, useUpdateNodeInternals } from 'reactflow';
+import type { Node, NodeProps } from '@xyflow/react';
+import { Handle, Position, useUpdateNodeInternals } from '@xyflow/react';
 import { useDocs } from '../context/DocsContext';
 import {
   FactoryIODir,
@@ -15,7 +15,7 @@ import {
 } from '../lib/factoryCompute';
 import StoredClockspeed from '../utils/clockspeed';
 
-export interface NodeDataEditorProps<D extends Record<string, any>, T extends string | undefined = undefined> {
+export interface NodeDataEditorProps<D extends Record<string, any>, T extends string = string> {
   node: Node<D, T>;
   updateNode: (update: Partial<Node<Partial<D>, T>>) => void;
 }
@@ -23,9 +23,10 @@ export interface NodeDataEditorProps<D extends Record<string, any>, T extends st
 export interface BaseNodeData {
   rotation?: number;
   bgColor?: string;
+  [key: string]: any;
 }
 
-export interface BaseNodeProps extends NodeProps<BaseNodeData> {
+export interface BaseNodeProps extends NodeProps<Node<BaseNodeData>> {
   children: React.ReactNode;
   backgroundColor: string;
   factoryIO: FactoryIndexedIO[];
@@ -166,7 +167,7 @@ export interface ItemNodeData extends BaseNodeData {
   io?: 'both' | 'in' | 'out';
 }
 
-export function ItemNode(props: NodeProps<ItemNodeData>) {
+export function ItemNode(props: NodeProps<Node<ItemNodeData, 'item'>>) {
   const { itemId, speed } = props.data;
   const res = useDocs(d => computeItemNode({ data: props.data, d }), [itemId]);
 
@@ -275,7 +276,7 @@ export interface RecipeNodeData extends BaseNodeData {
   storedCs?: number;
 }
 
-export function RecipeNode(props: NodeProps<RecipeNodeData>) {
+export function RecipeNode(props: NodeProps<Node<RecipeNodeData, 'recipe'>>) {
   const { data } = props;
   const { recipeId, storedCs = StoredClockspeed.FromDecimal(1) } = data;
   const res = useDocs(
@@ -462,7 +463,7 @@ export interface LogisticNodeData extends BaseNodeData {
   pipeInOut?: { left?: 'in' | 'out'; right?: 'in' | 'out'; top?: 'in' | 'out'; bottom?: 'in' | 'out' };
 }
 
-export function LogisticNode(props: NodeProps<LogisticNodeData>) {
+export function LogisticNode(props: NodeProps<Node<LogisticNodeData, 'logistic'>>) {
   const { factoryIO } = useDocs(d => computeLogisticNode({ data: props.data, d }), [JSON.stringify(props.data)]);
 
   return (
@@ -670,12 +671,12 @@ export const nodeEditors = {
   logistic: LogisticNodeDataEditor,
 } as const satisfies Record<NodeTypeKeys, ComponentType<NodeDataEditorProps<any, any>>>;
 
-type CustomNodeDataMap = {
-  [K in NodeTypeKeys]: (typeof nodeTypes)[K] extends ComponentType<NodeProps<infer D>> ? D : never;
+type CustomNodePropertiesMap = {
+  [K in NodeTypeKeys]: (typeof nodeTypes)[K] extends ComponentType<NodeProps<infer N>> ? N : never;
 };
 
-type CustomNodePropertiesMap = {
-  [K in NodeTypeKeys]: Node<CustomNodeDataMap[K], K>;
+type CustomNodeDataMap = {
+  [K in NodeTypeKeys]: CustomNodePropertiesMap[K] extends Node<infer D> ? D : never;
 };
 
 export type FactoryNodeData = CustomNodeDataMap[NodeTypeKeys];
