@@ -2,11 +2,17 @@ import type { Docs, Item, Recipe } from '../context/DocsContext';
 import type { ItemNodeData, RecipeNodeData, LogisticNodeData } from '../components/FactoryGraph';
 import StoredClockspeed from '../utils/clockspeed';
 
-const FactoryIODirOrder = ['left', 'top', 'right', 'bottom'] as const;
-type FactoryIODir = (typeof FactoryIODirOrder)[number];
+export const FactoryIODirOrder = ['left', 'top', 'right', 'bottom'] as const;
+export type FactoryIODir = (typeof FactoryIODirOrder)[number];
 type NoDirFactoryIO = `${'solid' | 'fluid'}:${'in' | 'out'}`;
 type FactoryIO = `${FactoryIODir}:${NoDirFactoryIO}`;
-type FactoryIndexedIO = `${FactoryIO}:${0 | 1 | 2 | 3}`;
+export type FactoryIndexedIO = `${FactoryIO}:${0 | 1 | 2 | 3}`;
+
+export function splitFactoryIO(id: FactoryIndexedIO): [FactoryIODir, 'solid' | 'fluid', 'in' | 'out', 0 | 1 | 2 | 3] {
+  const [dir, form, io, indexStr] = id.split(':') as [FactoryIODir, 'solid' | 'fluid', 'in' | 'out', '0' | '1 ' | '2' | '3'];
+  const index = parseInt(indexStr, 10) as 0 | 1 | 2 | 3;
+  return [dir, form, io, index];
+}
 
 interface ItemSpeed {
   itemId: string;

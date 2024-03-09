@@ -5,6 +5,7 @@ import { Handle, Position, useUpdateNodeInternals } from 'reactflow';
 import { useDocs } from '../context/DocsContext';
 import Fuse from 'fuse.js';
 import StoredClockspeed from '../utils/clockspeed';
+import { FactoryIODir, FactoryIODirOrder, FactoryIndexedIO, splitFactoryIO } from '../lib/factoryCompute';
 
 export interface NodeDataEditorProps<D extends Record<string, any>, T extends string | undefined = undefined> {
   node: Node<D, T>;
@@ -16,14 +17,10 @@ export interface BaseNodeData {
   bgColor?: string;
 }
 
-const FactoryIODirOrder = ['left', 'top', 'right', 'bottom'] as const;
-type FactoryIODir = (typeof FactoryIODirOrder)[number];
-type FactoryIO = `${FactoryIODir}:${'solid' | 'fluid'}:${'in' | 'out'}`;
-
 export interface BaseNodeProps extends NodeProps<BaseNodeData> {
   children: React.ReactNode;
   backgroundColor: string;
-  factoryIO: FactoryIO[];
+  factoryIO: FactoryIndexedIO[];
 }
 
 function BaseNode({ children, backgroundColor, factoryIO, id, data, selected }: BaseNodeProps) {
@@ -33,7 +30,7 @@ function BaseNode({ children, backgroundColor, factoryIO, id, data, selected }: 
   const topArgs = useMemo(() => {
     const count: Partial<Record<FactoryIODir, number>> = {};
     const indexs: number[] = [];
-    factoryIO.forEach((io, i) => {
+    factoryIO.forEach(io => {
       const dir = io.split(':')[0] as FactoryIODir;
       count[dir] = (count[dir] ?? 0) + 1;
       indexs.push(count[dir]!);
@@ -46,38 +43,37 @@ function BaseNode({ children, backgroundColor, factoryIO, id, data, selected }: 
   }, [factoryIO, rotation, updateNodeInternals]);
 
   return (
-    <>
-      <div
-        className='rounded-md p-1.5 text-primary-content outline-offset-2'
-        style={{
-          backgroundColor: bgColor,
-          outline: !isPrediction && selected ? '2px solid ' + bgColor : 'none',
-          opacity: isPrediction ? 0.3 : 1,
-        }}
-      >
-        <div>{children}</div>
-      </div>
+    <div
+      className='rounded-md p-1.5 text-primary-content outline-offset-2'
+      style={{
+        backgroundColor: bgColor,
+        outline: !isPrediction && selected ? '2px solid ' + bgColor : 'none',
+        opacity: isPrediction ? 0.3 : 1,
+        transform: `rotate(${rotation}deg)`,
+      }}
+    >
+      <div>{children}</div>
       {factoryIO.map((io, i) => {
-        const [dir, type, inOut] = io.split(':') as ['top' | 'right' | 'bottom' | 'left', 'solid' | 'fluid', 'in' | 'out'];
-        const tDir = FactoryIODirOrder[(FactoryIODirOrder.indexOf(dir) + Math.floor(rotation / 90)) % 4];
+        const [dir, type, inOut] = splitFactoryIO(io);
         const offset = (topArgs.indexs[i] / (topArgs.count[dir]! + 1)) * 100;
+        const adjDir = FactoryIODirOrder[(FactoryIODirOrder.indexOf(dir) + 1) % 4];
         return (
           <Handle
-            id={i.toString()}
-            key={i}
+            id={io}
+            key={io}
             type={inOut === 'in' ? 'target' : 'source'}
-            position={tDir as Position}
+            position={dir as Position}
             style={{
-              backgroundColor: inOut === 'in' ? '#F6E05E' : '#68D391',
-              [tDir === 'top' || tDir === 'bottom' ? 'left' : 'top']: `${offset}%`,
-              borderRadius: type === 'fluid' ? undefined : '0',
+              [adjDir]: `${offset}%`,
+              backgroundColor: inOut === 'in' ? '#F6E05E' : '#68D391', // Yellow for input, green for output
+              borderRadius: type === 'fluid' ? undefined : '0', // Circle for fluid, square for solid
               opacity: isPrediction ? 0.3 : 1,
             }}
             className='h-2 w-2'
           />
         );
       })}
-    </>
+    </div>
   );
 }
 
