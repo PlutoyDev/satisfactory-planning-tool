@@ -496,6 +496,7 @@ export function LogisticNodeDataEditor(props: NodeDataEditorProps<LogisticNodeDa
       options.push([key, { label: name, value: key }]);
     }
     for (const item of Object.values(items)) {
+      if (item.form !== 'solid') continue; // Only solid items can be used in splitters
       options.push([`item:${item.key}`, { label: item.displayName, value: `item:${item.key}`, icon: item.iconPath ?? undefined }]);
     }
     return Object.fromEntries(options);
