@@ -22,6 +22,7 @@ import { useProductionLineStore } from '../lib/store';
 import useLegacyEffect from '../hooks/useLegacyEffect';
 import { useLocation, useRoute } from 'wouter';
 import { ProductionLineInfo } from '../lib/productionLine';
+import ConnectionLine from '../components/ConnectionLine';
 
 export const routePattern = '/production-line/:id' as const;
 
@@ -96,7 +97,7 @@ export function ProductionGraph() {
         isValidConnection={isValidConnection}
         // Connection Line Props
         connectionRadius={50}
-        connectionLineType={ConnectionLineType.SmoothStep}
+        connectionLineComponent={ConnectionLine}
         //Keyboard Props
         deleteKeyCode={['Delete', 'Backspace']}
         // HTML Div Props
