@@ -1,6 +1,6 @@
 // Reactflow custom nodes
 import Fuse from 'fuse.js';
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ComponentType } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ComponentType, CSSProperties } from 'react';
 import type { Node, NodeProps } from 'reactflow';
 import { Handle, Position, useUpdateNodeInternals } from 'reactflow';
 import { useDocs } from '../context/DocsContext';
@@ -29,10 +29,12 @@ export interface BaseNodeProps extends NodeProps<BaseNodeData> {
   children: React.ReactNode;
   backgroundColor: string;
   factoryIO: FactoryIndexedIO[];
+  counterRotate?: 'whole' | 'individual' | 'images';
 }
 
-function BaseNode({ children, backgroundColor, factoryIO, id, data, selected }: BaseNodeProps) {
+function BaseNode({ children, backgroundColor, factoryIO, id, data, selected, counterRotate }: BaseNodeProps) {
   const { rotation = 0, bgColor = backgroundColor } = data;
+  const childrenRef = useRef<HTMLDivElement>(null);
   const isPrediction = id.startsWith('prediction');
   const updateNodeInternals = useUpdateNodeInternals();
   const topArgs = useMemo(() => {
@@ -50,29 +52,47 @@ function BaseNode({ children, backgroundColor, factoryIO, id, data, selected }: 
     updateNodeInternals(id);
   }, [factoryIO, rotation, updateNodeInternals]);
 
+  useEffect(() => {
+    if (childrenRef.current && counterRotate && counterRotate !== 'whole') {
+      const children = counterRotate === 'images' ? childrenRef.current.querySelectorAll('img') : childrenRef.current.childNodes;
+      for (const child of children) {
+        if (child instanceof HTMLElement) {
+          child.style.transform = `rotate(${-rotation}deg)`;
+        }
+      }
+    }
+  }, [childrenRef, counterRotate, rotation]);
+
   return (
-    <div
-      className='rounded-md p-1.5 text-primary-content outline-offset-2'
-      style={{
-        backgroundColor: bgColor,
-        outline: !isPrediction && selected ? '2px solid ' + bgColor : 'none',
-        opacity: isPrediction ? 0.3 : 1,
-        transform: `rotate(${rotation}deg)`,
-      }}
-    >
-      <div>{children}</div>
+    <>
+      <div
+        className='rounded-md p-1.5 text-primary-content outline-offset-2 transition-transform'
+        style={{
+          backgroundColor: bgColor,
+          outline: !isPrediction && selected ? '2px solid ' + bgColor : 'none',
+          opacity: isPrediction ? 0.3 : 1,
+          transform: `rotate(${rotation}deg)`,
+        }}
+      >
+        <div ref={childrenRef} style={{ transform: counterRotate === 'whole' ? `rotate(${-rotation}deg)` : undefined }}>
+          {children}
+        </div>
+      </div>
       {factoryIO.map((io, i) => {
         const [dir, type, inOut] = splitFactoryIO(io);
         const offset = (topArgs.indexs[i] / (topArgs.count[dir]! + 1)) * 100;
-        const adjDir = FactoryIODirOrder[(FactoryIODirOrder.indexOf(dir) + 1) % 4];
+        const dirIndex = FactoryIODirOrder.indexOf(dir);
+        const rotDirIndex = (dirIndex + rotation / 90) % 4;
+        const rotDir = FactoryIODirOrder[rotDirIndex];
+        const rotAdjDir = FactoryIODirOrder[(rotDirIndex + 1) % 4];
         return (
           <Handle
             id={io}
             key={io}
             type={inOut === 'in' ? 'target' : 'source'}
-            position={dir as Position}
+            position={rotDir as Position}
             style={{
-              [adjDir]: `${offset}%`,
+              [rotAdjDir]: `${offset}%`,
               backgroundColor: inOut === 'in' ? '#F6E05E' : '#68D391', // Yellow for input, green for output
               borderRadius: type === 'fluid' ? undefined : '0', // Circle for fluid, square for solid
               opacity: isPrediction ? 0.3 : 1,
@@ -81,7 +101,7 @@ function BaseNode({ children, backgroundColor, factoryIO, id, data, selected }: 
           />
         );
       })}
-    </div>
+    </>
   );
 }
 
@@ -149,7 +169,7 @@ export function ItemNode(props: NodeProps<ItemNodeData>) {
   if (!res) return <div>Invalid</div>;
 
   return (
-    <BaseNode {...props} factoryIO={res?.factoryIO ?? []} backgroundColor={defaultNodeColor.item}>
+    <BaseNode {...props} factoryIO={res?.factoryIO ?? []} backgroundColor={defaultNodeColor.item} counterRotate='whole'>
       <div className='flex h-20 w-20 flex-col items-center justify-center'>
         {res.item ? (
           <>
@@ -212,7 +232,7 @@ export function ItemNodeDataEditor(props: NodeDataEditorProps<ItemNodeData, 'ite
                       dropdownRef.current?.removeAttribute('open');
                     }}
                   >
-                    {iconPath && <img src={iconPath} alt={displayName} className='h-6 w-6' />}
+                    {iconPath && <img src={iconPath} alt={displayName} className='h-6 w-6 transition-transform' />}
                     {displayName}
                   </button>
                 </li>
@@ -268,7 +288,7 @@ export function RecipeNode(props: NodeProps<RecipeNodeData>) {
   const { ingredients, products } = recipe;
 
   return (
-    <BaseNode {...props} backgroundColor={defaultNodeColor.recipe} factoryIO={factoryIO}>
+    <BaseNode {...props} backgroundColor={defaultNodeColor.recipe} factoryIO={factoryIO} counterRotate='images'>
       <div className='flex h-36 w-36 flex-col items-center justify-center'>
         <div className='grid grid-flow-col grid-rows-12 place-items-center gap-0.5'>
           {items?.map(({ iconPath, displayName }, i) => {
