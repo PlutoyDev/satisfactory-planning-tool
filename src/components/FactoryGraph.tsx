@@ -1,11 +1,19 @@
 // Reactflow custom nodes
-import { useRef, useEffect, type ComponentType, useMemo, useState, useCallback, Fragment } from 'react';
-import type { NodeProps, Node } from 'reactflow';
+import Fuse from 'fuse.js';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ComponentType } from 'react';
+import type { Node, NodeProps } from 'reactflow';
 import { Handle, Position, useUpdateNodeInternals } from 'reactflow';
 import { useDocs } from '../context/DocsContext';
-import Fuse from 'fuse.js';
+import {
+  FactoryIODir,
+  FactoryIODirOrder,
+  FactoryIndexedIO,
+  computeItemNode,
+  computeLogisticNode,
+  computeRecipeNode,
+  splitFactoryIO,
+} from '../lib/factoryCompute';
 import StoredClockspeed from '../utils/clockspeed';
-import { FactoryIODir, FactoryIODirOrder, FactoryIndexedIO, splitFactoryIO } from '../lib/factoryCompute';
 
 export interface NodeDataEditorProps<D extends Record<string, any>, T extends string | undefined = undefined> {
   node: Node<D, T>;
@@ -136,29 +144,16 @@ export interface ItemNodeData extends BaseNodeData {
 
 export function ItemNode(props: NodeProps<ItemNodeData>) {
   const { itemId, speed } = props.data;
-  const itemInfo = useDocs(
-    ({ items }) => {
-      if (!itemId) return null;
-      const item = items[itemId];
-      return {
-        imgSrc: item?.iconPath ?? null,
-        itemName: item?.displayName ?? 'Unknown',
-        form: item.form === 'liquid' || item.form === 'gas' ? 'fluid' : ('solid' as 'solid' | 'fluid'),
-      };
-    },
-    [itemId],
-  );
+  const res = useDocs(d => computeItemNode({ data: props.data, d }), [itemId]);
+
+  if (!res) return <div>Invalid</div>;
 
   return (
-    <BaseNode
-      {...props}
-      factoryIO={itemInfo?.form ? [`left:${itemInfo.form}:in`, `right:${itemInfo.form}:out`] : []}
-      backgroundColor={defaultNodeColor.item}
-    >
+    <BaseNode {...props} factoryIO={res?.factoryIO ?? []} backgroundColor={defaultNodeColor.item}>
       <div className='flex h-20 w-20 flex-col items-center justify-center'>
-        {itemInfo ? (
+        {res.item ? (
           <>
-            {itemInfo.imgSrc && <img src={itemInfo.imgSrc} alt={itemInfo.itemName} className='h-8 w-8' />}
+            {res.item.iconPath && <img src={res.item.iconPath} alt={res.item.displayName} className='h-8 w-8' />}
             <p className='text-center'>{speed} / min</p>
           </>
         ) : (
@@ -250,88 +245,44 @@ export interface RecipeNodeData extends BaseNodeData {
 
 export function RecipeNode(props: NodeProps<RecipeNodeData>) {
   const { data, selected } = props;
-  const { items, recipes, productionMachines } = useDocs();
   const { recipeId, storedCs = StoredClockspeed.FromDecimal(1) } = data;
-  const res = useMemo(() => {
-    if (!recipeId) return null;
-    const recipeInfo = recipes[recipeId];
-    const machineInfo = productionMachines[recipeInfo.producedIn];
-    const factoryIO: FactoryIO[] = [];
-    const ingredientInfos = recipeInfo.ingredients?.map(({ itemKey }) => {
-      const item = items[itemKey] ?? { displayName: 'Unknown' };
-      const form: 'solid' | 'fluid' = item.form === 'liquid' || item.form === 'gas' ? 'fluid' : 'solid';
-      factoryIO.push(`left:${form}:in`);
-      return item;
-    });
-    const productInfos = recipeInfo.products?.map(({ itemKey }) => {
-      const item = items[itemKey] ?? { displayName: 'Unknown' };
-      const form: 'solid' | 'fluid' = item.form === 'liquid' || item.form === 'gas' ? 'fluid' : 'solid';
-      factoryIO.push(`right:${form}:out`);
-      return item;
-    });
+  const res = useDocs(
+    d => {
+      const cRes = computeRecipeNode({ data, d });
+      if (!cRes) return null;
+      return { ...cRes, machineInfo: d.productionMachines[cRes.recipe.producedIn] };
+    },
+    [recipeId, storedCs],
+  );
 
-    return { factoryIO, recipeInfo, machineInfo, ingredientInfos, productInfos };
-  }, [recipeId]);
-
-  if (!res)
+  if (!res) {
     return (
-      <div
-        className='rounded-md px-4 py-1 text-primary-content outline-offset-2'
-        style={{
-          backgroundColor: defaultNodeColor.recipe,
-          outline: selected ? '2px solid ' + defaultNodeColor.recipe : 'none',
-        }}
-      >
-        <p className='text-center font-semibold'>Unset</p>
-      </div>
+      <BaseNode {...props} backgroundColor={defaultNodeColor.recipe} factoryIO={[]}>
+        <div className='flex h-36 w-36 flex-col items-center justify-center'>
+          <p className='text-center font-semibold'>Invalid</p>
+        </div>
+      </BaseNode>
     );
-
-  const { factoryIO, recipeInfo, machineInfo, ingredientInfos, productInfos } = res;
+  }
+  const { factoryIO, recipe, machineInfo, items } = res;
+  const { ingredients, products } = recipe;
 
   return (
     <BaseNode {...props} backgroundColor={defaultNodeColor.recipe} factoryIO={factoryIO}>
       <div className='flex h-36 w-36 flex-col items-center justify-center'>
-        {recipeInfo ? (
-          <>
-            {/* <p className='text-pretty text-center font-semibold'>{recipeInfo.displayName}</p> */}
-            <div className='grid grid-flow-col grid-rows-2 place-items-center gap-0.5'>
-              {ingredientInfos?.map(
-                ({ iconPath, displayName }, i, { length: l }) =>
-                  iconPath && (
-                    <img
-                      key={iconPath}
-                      src={iconPath}
-                      alt={displayName}
-                      className='h-8 w-8'
-                      style={{ gridRow: l % 2 == 1 && i == l - 1 ? 'span 2 / span 2' : undefined }}
-                    />
-                  ),
-              )}
-              <p className='row-span-full'>➔</p>
-              {productInfos?.map(
-                ({ iconPath, displayName }, i, { length: l }) =>
-                  iconPath && (
-                    <img
-                      key={iconPath}
-                      src={iconPath}
-                      alt={displayName}
-                      className='h-8 w-8'
-                      style={{ gridRow: l % 2 == 1 && i == l - 1 ? 'span 2 / span 2' : undefined }}
-                    />
-                  ),
-              )}
-            </div>
-          </>
-        ) : (
-          <p className='text-center font-semibold'>Unset</p>
-        )}
-        {machineInfo ? (
-          <p className='text-center'>
-            {StoredClockspeed.ToPercent(storedCs)}% {machineInfo.displayName}
-          </p>
-        ) : (
-          <p className='text-center font-semibold'>Unset</p>
-        )}
+        <div className='grid grid-flow-col grid-rows-12 place-items-center gap-0.5'>
+          {items?.map(({ iconPath, displayName }, i) => {
+            const isIngredient = i < ingredients.length;
+            const span = 12 / (isIngredient ? ingredients.length : products.length);
+            const gridRow = `span ${span} / span ${span}`;
+            return (
+              <Fragment key={i}>
+                {i === ingredients.length && <p className='row-span-full'>➔</p>}
+                {iconPath && <img src={iconPath} alt={displayName} className='h-6 w-6' style={{ gridRow }} />}
+              </Fragment>
+            );
+          })}
+        </div>
       </div>
     </BaseNode>
   );
@@ -480,15 +431,7 @@ export interface LogisticNodeData extends BaseNodeData {
 }
 
 export function LogisticNode(props: NodeProps<LogisticNodeData>) {
-  const { type = 'splitter', rules, pipeInOut = { left: 'in' } } = props.data;
-  const isSplitter = type.startsWith('splitter');
-  const isPipeJunc = type === 'pipeJunc';
-
-  const factoryIO = useMemo(() => {
-    if (isPipeJunc) return FactoryIODirOrder.map(dir => `${dir}:fluid:${pipeInOut[dir] ?? 'out'}`) as FactoryIO[];
-    if (isSplitter) return ['left:solid:in', 'top:solid:out', 'bottom:solid:out', 'right:solid:out'] satisfies FactoryIO[];
-    return ['left:solid:in', 'top:solid:in', 'bottom:solid:in', 'right:solid:out'] satisfies FactoryIO[];
-  }, [isSplitter, isPipeJunc, pipeInOut]);
+  const { factoryIO } = useDocs(d => computeLogisticNode({ data: props.data, d }), [JSON.stringify(props.data)]);
 
   return (
     <BaseNode {...props} factoryIO={factoryIO} backgroundColor={defaultNodeColor.logistic}>

@@ -30,10 +30,14 @@ interface ComputeArgs<D> {
   data: D;
   d: Docs;
   /** the computed result of connected nodes, where the key is handleId read from edge data */
-  connectedResult: Partial<Record<FactoryIndexedIO, ItemSpeed[]>>;
+  connectedResult?: Partial<Record<FactoryIndexedIO, ItemSpeed[]>>;
 }
 
-export function computeItemNode({ data, d }: ComputeArgs<ItemNodeData>): null | ComputeResult {
+interface ItemComputeResult extends ComputeResult {
+  item: Item;
+}
+
+export function computeItemNode({ data, d }: ComputeArgs<ItemNodeData>): null | ItemComputeResult {
   const { itemId, speed = 0, io = 'both' } = data;
 
   if (!itemId) return null;
@@ -43,7 +47,6 @@ export function computeItemNode({ data, d }: ComputeArgs<ItemNodeData>): null | 
   const form: 'solid' | 'fluid' = item.form === 'liquid' || item.form === 'gas' ? 'fluid' : 'solid';
   const factoryIO: FactoryIndexedIO[] = [];
   const itemSpeed: Partial<Record<FactoryIndexedIO, ItemSpeed[]>> = {};
-  const valid: Partial<Record<FactoryIndexedIO, boolean>> = {};
 
   if (io === 'both' || io === 'in') {
     const id: FactoryIndexedIO = `left:${form}:in:0`;
@@ -57,7 +60,7 @@ export function computeItemNode({ data, d }: ComputeArgs<ItemNodeData>): null | 
     itemSpeed[id] = [{ itemId, speed }];
   }
 
-  return { factoryIO, itemSpeed };
+  return { factoryIO, itemSpeed, item };
 }
 
 interface RecipeComputeResult extends ComputeResult {
@@ -104,7 +107,7 @@ export function computeRecipeNode({ data, d }: ComputeArgs<RecipeNodeData>): nul
   return { factoryIO, itemSpeed, recipe, items };
 }
 
-export function computeLogisticNode({ data, d, connectedResult }: ComputeArgs<LogisticNodeData>): null | ComputeResult {
+export function computeLogisticNode({ data, d, connectedResult }: ComputeArgs<LogisticNodeData>): ComputeResult {
   const { type, rules = { center: ['any'] }, pipeInOut = { left: 'in' } } = data;
 
   //Logistic Node are a bit more complex as the result is dependent on what is connected to it
@@ -115,23 +118,25 @@ export function computeLogisticNode({ data, d, connectedResult }: ComputeArgs<Lo
   const unusedIndex: number[] = [0, 1, 2, 3];
 
   // Sum all the input and output by itemId
-  for (const [key, value] of Object.entries(connectedResult)) {
-    if (value) {
-      for (const { itemId, speed } of value) {
-        if (!inventory.has(itemId)) {
-          inventory.set(itemId, 0);
+  if (connectedResult) {
+    for (const [key, value] of Object.entries(connectedResult)) {
+      if (value) {
+        for (const { itemId, speed } of value) {
+          if (!inventory.has(itemId)) {
+            inventory.set(itemId, 0);
+          }
+          const newSpeed = inventory.get(itemId)! + speed;
+          if (newSpeed === 0) {
+            inventory.delete(itemId);
+          } else {
+            inventory.set(itemId, newSpeed);
+          }
         }
-        const newSpeed = inventory.get(itemId)! + speed;
-        if (newSpeed === 0) {
-          inventory.delete(itemId);
-        } else {
-          inventory.set(itemId, newSpeed);
-        }
+        // Provide the negative speed if there is a connection (for validation)
+        itemSpeed[key as FactoryIndexedIO] = value.map(({ itemId, speed }) => ({ itemId, speed: -speed }));
+        factoryIO.push(key as FactoryIndexedIO);
+        unusedIndex.splice(unusedIndex.indexOf(Number(key.split(':')[3])), 1);
       }
-      // Provide the negative speed if there is a connection (for validation)
-      itemSpeed[key as FactoryIndexedIO] = value.map(({ itemId, speed }) => ({ itemId, speed: -speed }));
-      factoryIO.push(key as FactoryIndexedIO);
-      unusedIndex.splice(unusedIndex.indexOf(Number(key.split(':')[3])), 1);
     }
   }
 
