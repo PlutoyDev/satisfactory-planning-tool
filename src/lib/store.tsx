@@ -17,7 +17,6 @@ import type { DragEvent } from 'react';
 import type {
   Node,
   Edge,
-  Viewport,
   OnNodesChange,
   OnEdgesChange,
   OnConnect,
@@ -26,12 +25,14 @@ import type {
   NodeChange,
   NodeRemoveChange,
   EdgeRemoveChange,
+  IsValidConnection,
 } from 'reactflow';
 import type { NodeTypeKeys, FactoryNodeProperties } from '../components/FactoryGraph';
 import { pick } from 'lodash';
 import { ProductionLineInfo } from './productionLine';
 import { Docs, useDocs } from '../context/DocsContext';
 import StoredClockspeed from '../utils/clockspeed';
+import { FactoryIndexedIO, splitFactoryIO } from './factoryCompute';
 
 type NavigateFn = ReturnType<typeof useLocation>[1];
 type DeboucedCollectedChanges = {
@@ -136,6 +137,9 @@ interface AppState {
   onEdgesChange: OnEdgesChange;
   onConnect: OnConnect;
   onSelectionChange: OnSelectionChangeFunc;
+  isValidConnection: IsValidConnection;
+
+  invalidConnectionReason?: string;
 
   // Reactflow div callbacks
   onDrop: (event: DragEvent<HTMLDivElement>) => void;
@@ -563,9 +567,9 @@ export function createApplicaionStore(navigate: NavigateFn, { items, recipes }: 
         return;
       }
 
-      if (eEdges.some(e => (['source', 'target', 'sourceHandle', 'targetHandle'] as const).every(k => e[k] === conn[k]))) {
-        return;
-      }
+      // if (eEdges.some(e => (['source', 'target', 'sourceHandle', 'targetHandle'] as const).every(k => e[k] === conn[k]))) {
+      //   return;
+      // }
 
       const edge: Edge = {
         id: nanoid(),
@@ -611,6 +615,52 @@ export function createApplicaionStore(navigate: NavigateFn, { items, recipes }: 
       if (edges.length === 1 && nodes.length === 0) {
         set({ selEdge: edges[0] });
       }
+    },
+    isValidConnection: ({ source, target, sourceHandle, targetHandle }) => {
+      const { edges } = get();
+
+      if (!source || !target || !sourceHandle || !targetHandle) {
+        set({ invalidConnectionReason: 'missing source, target, sourceHandle, or targetHandle' });
+        return false;
+      }
+
+      if (source === target) {
+        // self connection
+        set({ invalidConnectionReason: 'self connection' });
+        return false;
+      }
+
+      for (const e of edges) {
+        if (e.source === source && e.sourceHandle === sourceHandle) {
+          // source already connected
+          set({ invalidConnectionReason: 'source already connected' });
+          return false;
+        }
+
+        if (e.target === target && e.targetHandle === targetHandle) {
+          // target already connected
+          set({ invalidConnectionReason: 'target already connected' });
+          return false;
+        }
+      }
+
+      const [, sForm, sIo] = splitFactoryIO(sourceHandle as FactoryIndexedIO);
+      const [, tForm, tIo] = splitFactoryIO(targetHandle as FactoryIndexedIO);
+
+      if (sForm !== tForm) {
+        // can't connect solid to fluid
+        set({ invalidConnectionReason: "can't connect solid to fluid" });
+        return false;
+      }
+
+      if (sIo === tIo) {
+        // can't connect in to in or out to out
+        set({ invalidConnectionReason: "can't connect in to in or out to out" });
+        return false;
+      }
+
+      set({ invalidConnectionReason: undefined });
+      return true;
     },
   }));
 }

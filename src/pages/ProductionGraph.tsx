@@ -41,6 +41,7 @@ export function ProductionGraph() {
     onConnect,
     onSelectionChange,
     onDrop,
+    isValidConnection,
     saveFullProductionLineToIdb,
     loadProductionLineFromIdb,
     setRfInstance,
@@ -91,6 +92,8 @@ export function ProductionGraph() {
         onInit={setRfInstance}
         // Event Handlers - Selection Events
         onSelectionChange={onSelectionChange}
+        // Event Handlers - Connection Events
+        isValidConnection={isValidConnection}
         // Connection Line Props
         connectionRadius={50}
         connectionLineType={ConnectionLineType.SmoothStep}
