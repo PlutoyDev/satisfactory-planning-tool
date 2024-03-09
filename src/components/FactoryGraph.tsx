@@ -66,7 +66,7 @@ function BaseNode({ children, backgroundColor, factoryIO, id, data, selected, co
   return (
     <>
       <div
-        className='rounded-md p-1.5 text-primary-content outline-offset-2 transition-transform'
+        className='rounded-md p-1.5 text-primary-content outline-offset-2 transition-transform will-change-transform'
         style={{
           backgroundColor: bgColor,
           outline: !isPrediction && selected ? '2px solid ' + bgColor : 'none',
@@ -74,7 +74,11 @@ function BaseNode({ children, backgroundColor, factoryIO, id, data, selected, co
           transform: `rotate(${rotation}deg)`,
         }}
       >
-        <div ref={childrenRef} style={{ transform: counterRotate === 'whole' ? `rotate(${-rotation}deg)` : undefined }}>
+        <div
+          ref={childrenRef}
+          className='transition-transform will-change-transform'
+          style={{ transform: counterRotate === 'whole' ? `rotate(${-rotation}deg)` : undefined }}
+        >
           {children}
         </div>
       </div>
