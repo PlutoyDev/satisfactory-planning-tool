@@ -170,7 +170,15 @@ export function ItemNode(props: NodeProps<ItemNodeData>) {
   const { itemId, speed } = props.data;
   const res = useDocs(d => computeItemNode({ data: props.data, d }), [itemId]);
 
-  if (!res) return <div>Invalid</div>;
+  if (!res) {
+    return (
+      <BaseNode {...props} factoryIO={[]} backgroundColor={defaultNodeColor.item}>
+        <div className='flex h-20 w-20 flex-col items-center justify-center'>
+          <p className='w-min text-center font-semibold'>{itemId ? 'Invalid' : 'Unset'}</p>
+        </div>
+      </BaseNode>
+    );
+  }
 
   return (
     <BaseNode {...props} factoryIO={res?.factoryIO ?? []} backgroundColor={defaultNodeColor.item} counterRotate='whole'>
@@ -268,7 +276,7 @@ export interface RecipeNodeData extends BaseNodeData {
 }
 
 export function RecipeNode(props: NodeProps<RecipeNodeData>) {
-  const { data, selected } = props;
+  const { data } = props;
   const { recipeId, storedCs = StoredClockspeed.FromDecimal(1) } = data;
   const res = useDocs(
     d => {
@@ -283,7 +291,7 @@ export function RecipeNode(props: NodeProps<RecipeNodeData>) {
     return (
       <BaseNode {...props} backgroundColor={defaultNodeColor.recipe} factoryIO={[]}>
         <div className='flex h-36 w-36 flex-col items-center justify-center'>
-          <p className='text-center font-semibold'>Invalid</p>
+          <p className='text-center font-semibold'>{recipeId ? 'Invalid' : 'Unset'}</p>
         </div>
       </BaseNode>
     );
