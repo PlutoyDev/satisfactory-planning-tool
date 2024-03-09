@@ -302,7 +302,7 @@ export function RecipeNode(props: NodeProps<RecipeNodeData>) {
             return (
               <Fragment key={i}>
                 {i === ingredients.length && <p className='row-span-full'>➔</p>}
-                {iconPath && <img src={iconPath} alt={displayName} className='h-6 w-6' style={{ gridRow }} />}
+                {iconPath && <img src={iconPath} alt={displayName} className='h-8 w-8' style={{ gridRow }} />}
               </Fragment>
             );
           })}
