@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback, type ComponentType } from 'react';
-import { ReactFlow, Panel, Background, useReactFlow, ConnectionLineType } from 'reactflow';
+import { ReactFlow, Panel, Background, useReactFlow, ConnectionLineType, ConnectionMode } from 'reactflow';
 import {
   ArrowsPointingOutIcon,
   ArrowsPointingInIcon,
@@ -95,10 +95,12 @@ export function ProductionGraph() {
         onSelectionChange={onSelectionChange}
         // Event Handlers - Connection Events
         isValidConnection={isValidConnection}
+        // Interaction Props
+        connectionMode={ConnectionMode.Loose}
         // Connection Line Props
         connectionRadius={50}
         connectionLineComponent={ConnectionLine}
-        //Keyboard Props
+        // Keyboard Props
         deleteKeyCode={['Delete', 'Backspace']}
         // HTML Div Props
         onDrop={onDrop}

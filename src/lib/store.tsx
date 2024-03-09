@@ -620,28 +620,13 @@ export function createApplicaionStore(navigate: NavigateFn, { items, recipes }: 
       const { edges } = get();
 
       if (!source || !target || !sourceHandle || !targetHandle) {
-        set({ invalidConnectionReason: 'missing source, target, sourceHandle, or targetHandle' });
+        set({ invalidConnectionReason: 'Missing source, target, sourceHandle, or targetHandle' });
         return false;
       }
 
       if (source === target) {
-        // self connection
-        set({ invalidConnectionReason: 'self connection' });
+        set({ invalidConnectionReason: "Can't connect to self" });
         return false;
-      }
-
-      for (const e of edges) {
-        if (e.source === source && e.sourceHandle === sourceHandle) {
-          // source already connected
-          set({ invalidConnectionReason: 'source already connected' });
-          return false;
-        }
-
-        if (e.target === target && e.targetHandle === targetHandle) {
-          // target already connected
-          set({ invalidConnectionReason: 'target already connected' });
-          return false;
-        }
       }
 
       const [, sForm, sIo] = splitFactoryIO(sourceHandle as FactoryIndexedIO);
@@ -649,14 +634,28 @@ export function createApplicaionStore(navigate: NavigateFn, { items, recipes }: 
 
       if (sForm !== tForm) {
         // can't connect solid to fluid
-        set({ invalidConnectionReason: "can't connect solid to fluid" });
+        set({ invalidConnectionReason: "Can't connect solid to fluid" });
         return false;
       }
 
       if (sIo === tIo) {
         // can't connect in to in or out to out
-        set({ invalidConnectionReason: "can't connect in to in or out to out" });
+        set({ invalidConnectionReason: "Can't connect input to input or output to output" });
         return false;
+      }
+
+      for (const e of edges) {
+        if (e.source === source && e.sourceHandle === sourceHandle) {
+          // source already connected
+          set({ invalidConnectionReason: 'Source already connected' });
+          return false;
+        }
+
+        if (e.target === target && e.targetHandle === targetHandle) {
+          // target already connected
+          set({ invalidConnectionReason: 'Target already connected' });
+          return false;
+        }
       }
 
       set({ invalidConnectionReason: undefined });

@@ -1,4 +1,5 @@
 import { getSmoothStepPath, ConnectionLineComponentProps } from 'reactflow';
+import { useProductionLineStore } from '../lib/store';
 
 export function ConnectionLine({
   fromX,
@@ -11,6 +12,7 @@ export function ConnectionLine({
   fromNode,
   fromHandle,
 }: ConnectionLineComponentProps) {
+  const { invalidConnectionReason } = useProductionLineStore('invalidConnectionReason');
   const [dAttr, labelX, labelY] = getSmoothStepPath({
     sourceX: fromX,
     sourceY: fromY,
@@ -20,12 +22,21 @@ export function ConnectionLine({
     targetPosition: toPosition,
   });
 
+  const isError = connectionStatus === 'invalid' && invalidConnectionReason;
+
   return (
-    <g className='pointer-events-none z-50' d={dAttr}>
-      <path d={dAttr} strokeWidth={2} fill='none' className={`${connectionStatus === 'valid' ? 'stroke-success' : 'stroke-error'}`} />
-      <text x={labelX} y={labelY} textAnchor='middle' className='text-sm font-semibold text-base-content'>
-        {connectionStatus === 'valid' ? '✓' : '✕'}
-      </text>
+    <g className='react-flow__connection pointer-events-none z-50' d={dAttr}>
+      <path
+        d={dAttr}
+        strokeWidth={2}
+        fill='none'
+        className={`react-flow__connection-path ${isError ? 'stroke-error' : connectionStatus === 'valid' ? 'stroke-success' : ''}`}
+      />
+      {connectionStatus === 'invalid' && (
+        <text x={labelX} y={labelY + 20} textAnchor='middle' className='fill-error text-sm font-semibold '>
+          {invalidConnectionReason}
+        </text>
+      )}
       {/* TODO: Display itemSpeed for this connection using fromNode and fromHandle and getting pre computed result from store */}
     </g>
   );
