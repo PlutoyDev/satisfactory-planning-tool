@@ -53,8 +53,6 @@ function BaseNode({ children, backgroundColor, factoryIO, id, data, selected, co
     updateNodeInternals(id);
   }, [factoryIO, rotation, updateNodeInternals]);
 
-  const { height, width } = typeof size === 'number' ? { width: size, height: size } : size;
-
   useEffect(() => {
     if (childrenRef.current && counterRotate && counterRotate !== 'whole') {
       const children = counterRotate === 'images' ? childrenRef.current.querySelectorAll('img') : childrenRef.current.childNodes;
@@ -66,29 +64,29 @@ function BaseNode({ children, backgroundColor, factoryIO, id, data, selected, co
     }
   }, [childrenRef, counterRotate, rotation]);
 
+  const { height, width } = typeof size === 'number' ? { width: size, height: size } : size;
+  const swapWidthHeight = rotation % 180 !== 0;
+
   return (
-    <>
-      <div
-        className='rounded-md p-[5px] text-primary-content outline-offset-2 transition-transform will-change-transform'
-        style={{
-          backgroundColor: bgColor,
-          outline: !isPrediction && selected ? '2px solid ' + bgColor : 'none',
-          opacity: isPrediction ? 0.3 : 1,
-          transform: `rotate(${rotation}deg)`,
-          width: `${width}px`,
-          height: `${height}px`,
-        }}
-      >
-        {children && (
-          <div
-            ref={childrenRef}
-            className='size-full transition-transform will-change-transform *:size-full'
-            style={{ transform: counterRotate === 'whole' ? `rotate(${-rotation}deg)` : undefined }}
-          >
-            {children}
-          </div>
-        )}
-      </div>
+    <div
+      className='rounded-md p-[5px] text-primary-content outline-offset-2 transition-[width,height] '
+      style={{
+        backgroundColor: bgColor,
+        outline: !isPrediction && selected ? '2px solid ' + bgColor : 'none',
+        opacity: isPrediction ? 0.3 : 1,
+        width: swapWidthHeight ? height : width,
+        height: swapWidthHeight ? width : height,
+      }}
+    >
+      {children && (
+        <div
+          ref={childrenRef}
+          className='size-full transition-transform will-change-transform *:size-full'
+          style={counterRotate === 'whole' ? undefined : { transform: `rotate(${rotation}deg)` }}
+        >
+          {children}
+        </div>
+      )}
       {factoryIO.map((io, i) => {
         const [dir, type, inOut] = splitFactoryIO(io);
         const offset = (topArgs.indexs[i] / (topArgs.count[dir]! + 1)) * 100;
@@ -96,6 +94,7 @@ function BaseNode({ children, backgroundColor, factoryIO, id, data, selected, co
         const rotDirIndex = (dirIndex + rotation / 90) % 4;
         const rotDir = FactoryIODirOrder[rotDirIndex];
         const rotAdjDir = FactoryIODirOrder[(rotDirIndex + 1) % 4];
+        const rotOppAdjDir = FactoryIODirOrder[(rotDirIndex - 1) % 4];
         return (
           <Handle
             id={io}
@@ -103,6 +102,7 @@ function BaseNode({ children, backgroundColor, factoryIO, id, data, selected, co
             type={inOut === 'in' ? 'target' : 'source'}
             position={rotDir as Position}
             style={{
+              [rotOppAdjDir]: `${100 - offset}%`,
               [rotAdjDir]: `${offset}%`,
               backgroundColor: inOut === 'in' ? '#F6E05E' : '#68D391', // Yellow for input, green for output
               borderRadius: type === 'fluid' ? undefined : '0', // Circle for fluid, square for solid
@@ -112,7 +112,7 @@ function BaseNode({ children, backgroundColor, factoryIO, id, data, selected, co
           />
         );
       })}
-    </>
+    </div>
   );
 }
 
@@ -338,7 +338,7 @@ export function RecipeNode(props: NodeProps<RecipeNodeData>) {
 
   return (
     <BaseNode {...props} backgroundColor={defaultNodeColor.recipe} factoryIO={factoryIO} counterRotate='images' size={size}>
-      <div className='flex h-36 w-36 flex-col items-center justify-center'>
+      <div className='flex flex-col items-center justify-center'>
         <div className='grid grid-flow-col grid-rows-12 place-items-center gap-0.5'>
           {items?.map(({ iconPath, displayName }, i) => {
             const isIngredient = i < ingredients.length;
