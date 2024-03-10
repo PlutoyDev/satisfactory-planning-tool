@@ -26,7 +26,7 @@ export interface BaseNodeData {
 }
 
 export interface BaseNodeProps extends NodeProps<BaseNodeData> {
-  children: React.ReactNode;
+  children?: React.ReactNode;
   backgroundColor: string;
   factoryIO: FactoryIndexedIO[];
   counterRotate?: 'whole' | 'individual' | 'images';
@@ -292,20 +292,20 @@ Sizes of machines (W x L), Taken from satisfactory wiki.
   Blender 18 x 16
   Particle Accelerator 24 x 38
 
-Multiply by 10 to get the size in pixels
+Multiply by 15px/m to get the size in pixels
 Width of machine is the "height" in the node, and the length is the "width" in the node
 */
 
 export const MachineSizeMul = {
-  Build_SmelterMk1_C: { height: 60, width: 90 },
-  Build_ConstructorMk1_C: { height: 79, width: 99 },
-  Build_FoundryMk1_C: { height: 100, width: 90 },
-  Build_AssemblerMk1_C: { height: 100, width: 150 },
-  Build_ManufacturerMk1_C: { height: 180, width: 200 },
-  Build_Packager_C: { height: 80, width: 80 },
-  Build_OilRefinery_C: { height: 100, width: 200 },
-  Build_Blender_C: { height: 180, width: 160 },
-  Build_HadronCollider_C: { height: 240, width: 380 },
+  Build_SmelterMk1_C: { height: 90, width: 135 },
+  Build_ConstructorMk1_C: { height: 120, width: 150 },
+  Build_FoundryMk1_C: { height: 150, width: 135 },
+  Build_AssemblerMk1_C: { height: 150, width: 225 },
+  Build_ManufacturerMk1_C: { height: 270, width: 300 },
+  Build_Packager_C: { height: 120, width: 120 },
+  Build_OilRefinery_C: { height: 150, width: 300 },
+  Build_Blender_C: { height: 270, width: 240 },
+  Build_HadronCollider_C: { height: 360, width: 570 },
 } as const satisfies Record<string, { height: number; width: number }>;
 
 export function RecipeNode(props: NodeProps<RecipeNodeData>) {
@@ -500,11 +500,7 @@ export interface LogisticNodeData extends BaseNodeData {
 export function LogisticNode(props: NodeProps<LogisticNodeData>) {
   const { factoryIO } = useDocs(d => computeLogisticNode({ data: props.data, d }), [JSON.stringify(props.data)]);
 
-  return (
-    <BaseNode {...props} factoryIO={factoryIO} backgroundColor={defaultNodeColor.logistic} size={40}>
-      <div className='flex h-8 w-8 flex-col items-center justify-center'></div>
-    </BaseNode>
-  );
+  return <BaseNode {...props} factoryIO={factoryIO} backgroundColor={defaultNodeColor.logistic} size={60} />;
 }
 
 const capitalize = (s: string) => s[0].toUpperCase() + s.slice(1);
