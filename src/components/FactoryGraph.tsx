@@ -102,8 +102,9 @@ function BaseNode({ children, backgroundColor, factoryIO, id, data, selected, co
             type={inOut === 'in' ? 'target' : 'source'}
             position={rotDir as Position}
             style={{
-              [rotOppAdjDir]: `${100 - offset}%`,
+              [rotDir]: '-5px', // Counteract the padding
               [rotAdjDir]: `${offset}%`,
+              [rotOppAdjDir]: `${100 - offset}%`,
               backgroundColor: inOut === 'in' ? '#F6E05E' : '#68D391', // Yellow for input, green for output
               borderRadius: type === 'fluid' ? undefined : '0', // Circle for fluid, square for solid
               opacity: isPrediction ? 0.3 : 1,
