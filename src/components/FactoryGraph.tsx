@@ -79,13 +79,15 @@ function BaseNode({ children, backgroundColor, factoryIO, id, data, selected, co
           height: `${height}px`,
         }}
       >
-        <div
-          ref={childrenRef}
-          className='size-full transition-transform will-change-transform *:size-full'
-          style={{ transform: counterRotate === 'whole' ? `rotate(${-rotation}deg)` : undefined }}
-        >
-          {children}
-        </div>
+        {children && (
+          <div
+            ref={childrenRef}
+            className='size-full transition-transform will-change-transform *:size-full'
+            style={{ transform: counterRotate === 'whole' ? `rotate(${-rotation}deg)` : undefined }}
+          >
+            {children}
+          </div>
+        )}
       </div>
       {factoryIO.map((io, i) => {
         const [dir, type, inOut] = splitFactoryIO(io);
