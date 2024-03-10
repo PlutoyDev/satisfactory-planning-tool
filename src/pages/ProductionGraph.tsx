@@ -83,6 +83,7 @@ export function ProductionGraph() {
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         nodeTypes={nodeTypes}
+        nodeOrigin={[0.5, 0.5]}
         // TODO: Make a better attribution, then hide this (It doesn't look good with this background)
         proOptions={{ hideAttribution: false }}
         // Viewport Props
