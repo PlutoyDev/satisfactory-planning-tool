@@ -75,16 +75,14 @@ function BaseNode({ children, backgroundColor, factoryIO, id, data, selected, co
           outline: !isPrediction && selected ? '2px solid ' + bgColor : 'none',
           opacity: isPrediction ? 0.3 : 1,
           transform: `rotate(${rotation}deg)`,
+          width: `${width}px`,
+          height: `${height}px`,
         }}
       >
         <div
           ref={childrenRef}
-          className='transition-transform will-change-transform *:size-full'
-          style={{
-            transform: counterRotate === 'whole' ? `rotate(${-rotation}deg)` : undefined,
-            width: `${width - 10}px`,
-            height: `${height - 10}px`,
-          }}
+          className='size-full transition-transform will-change-transform *:size-full'
+          style={{ transform: counterRotate === 'whole' ? `rotate(${-rotation}deg)` : undefined }}
         >
           {children}
         </div>
@@ -282,6 +280,34 @@ export interface RecipeNodeData extends BaseNodeData {
   storedCs?: number;
 }
 
+/* 
+Sizes of machines (W x L), Taken from satisfactory wiki.
+  Smelter 6 x 9
+  Constructor 7.9 x 9.9
+  Foundry 10 x 9
+  Assembler 10 x 15
+  Manufacturer 18 x 20
+  Packager 8 x 8
+  Refinery 10 x 20
+  Blender 18 x 16
+  Particle Accelerator 24 x 38
+
+Multiply by 10 to get the size in pixels
+Width of machine is the "height" in the node, and the length is the "width" in the node
+*/
+
+export const MachineSizeMul = {
+  Build_SmelterMk1_C: { height: 60, width: 90 },
+  Build_ConstructorMk1_C: { height: 79, width: 99 },
+  Build_FoundryMk1_C: { height: 100, width: 90 },
+  Build_AssemblerMk1_C: { height: 100, width: 150 },
+  Build_ManufacturerMk1_C: { height: 180, width: 200 },
+  Build_Packager_C: { height: 80, width: 80 },
+  Build_OilRefinery_C: { height: 100, width: 200 },
+  Build_Blender_C: { height: 180, width: 160 },
+  Build_HadronCollider_C: { height: 240, width: 380 },
+} as const satisfies Record<string, { height: number; width: number }>;
+
 export function RecipeNode(props: NodeProps<RecipeNodeData>) {
   const { data } = props;
   const { recipeId, storedCs = StoredClockspeed.FromDecimal(1) } = data;
@@ -306,8 +332,10 @@ export function RecipeNode(props: NodeProps<RecipeNodeData>) {
   const { factoryIO, recipe, machineInfo, items } = res;
   const { ingredients, products } = recipe;
 
+  const size = MachineSizeMul[machineInfo.key as keyof typeof MachineSizeMul] ?? 140;
+
   return (
-    <BaseNode {...props} backgroundColor={defaultNodeColor.recipe} factoryIO={factoryIO} counterRotate='images' size={140}>
+    <BaseNode {...props} backgroundColor={defaultNodeColor.recipe} factoryIO={factoryIO} counterRotate='images' size={size}>
       <div className='flex h-36 w-36 flex-col items-center justify-center'>
         <div className='grid grid-flow-col grid-rows-12 place-items-center gap-0.5'>
           {items?.map(({ iconPath, displayName }, i) => {
