@@ -30,9 +30,10 @@ export interface BaseNodeProps extends NodeProps<BaseNodeData> {
   backgroundColor: string;
   factoryIO: FactoryIndexedIO[];
   counterRotate?: 'whole' | 'individual' | 'images';
+  size: number | { width: number; height: number };
 }
 
-function BaseNode({ children, backgroundColor, factoryIO, id, data, selected, counterRotate }: BaseNodeProps) {
+function BaseNode({ children, backgroundColor, factoryIO, id, data, selected, counterRotate, size }: BaseNodeProps) {
   const { rotation = 0, bgColor = backgroundColor } = data;
   const childrenRef = useRef<HTMLDivElement>(null);
   const isPrediction = id.startsWith('prediction');
@@ -52,6 +53,8 @@ function BaseNode({ children, backgroundColor, factoryIO, id, data, selected, co
     updateNodeInternals(id);
   }, [factoryIO, rotation, updateNodeInternals]);
 
+  const { height, width } = typeof size === 'number' ? { width: size, height: size } : size;
+
   useEffect(() => {
     if (childrenRef.current && counterRotate && counterRotate !== 'whole') {
       const children = counterRotate === 'images' ? childrenRef.current.querySelectorAll('img') : childrenRef.current.childNodes;
@@ -66,7 +69,7 @@ function BaseNode({ children, backgroundColor, factoryIO, id, data, selected, co
   return (
     <>
       <div
-        className='rounded-md p-1.5 text-primary-content outline-offset-2 transition-transform will-change-transform'
+        className='rounded-md p-[5px] text-primary-content outline-offset-2 transition-transform will-change-transform'
         style={{
           backgroundColor: bgColor,
           outline: !isPrediction && selected ? '2px solid ' + bgColor : 'none',
@@ -76,8 +79,12 @@ function BaseNode({ children, backgroundColor, factoryIO, id, data, selected, co
       >
         <div
           ref={childrenRef}
-          className='transition-transform will-change-transform'
-          style={{ transform: counterRotate === 'whole' ? `rotate(${-rotation}deg)` : undefined }}
+          className='transition-transform will-change-transform *:size-full'
+          style={{
+            transform: counterRotate === 'whole' ? `rotate(${-rotation}deg)` : undefined,
+            width: `${width - 10}px`,
+            height: `${height - 10}px`,
+          }}
         >
           {children}
         </div>
@@ -172,8 +179,8 @@ export function ItemNode(props: NodeProps<ItemNodeData>) {
 
   if (!res) {
     return (
-      <BaseNode {...props} factoryIO={[]} backgroundColor={defaultNodeColor.item}>
-        <div className='flex h-20 w-20 flex-col items-center justify-center'>
+      <BaseNode {...props} factoryIO={[]} backgroundColor={defaultNodeColor.item} size={80}>
+        <div className='flex flex-col items-center justify-center'>
           <p className='w-min text-center font-semibold'>{itemId ? 'Invalid' : 'Unset'}</p>
         </div>
       </BaseNode>
@@ -181,8 +188,8 @@ export function ItemNode(props: NodeProps<ItemNodeData>) {
   }
 
   return (
-    <BaseNode {...props} factoryIO={res?.factoryIO ?? []} backgroundColor={defaultNodeColor.item} counterRotate='whole'>
-      <div className='flex h-20 w-20 flex-col items-center justify-center'>
+    <BaseNode {...props} factoryIO={res?.factoryIO ?? []} backgroundColor={defaultNodeColor.item} size={80} counterRotate='whole'>
+      <div className='flex flex-col items-center justify-center'>
         {res.item ? (
           <>
             {res.item.iconPath && <img src={res.item.iconPath} alt={res.item.displayName} className='h-8 w-8' />}
@@ -289,7 +296,7 @@ export function RecipeNode(props: NodeProps<RecipeNodeData>) {
 
   if (!res) {
     return (
-      <BaseNode {...props} backgroundColor={defaultNodeColor.recipe} factoryIO={[]}>
+      <BaseNode {...props} backgroundColor={defaultNodeColor.recipe} factoryIO={[]} size={140}>
         <div className='flex h-36 w-36 flex-col items-center justify-center'>
           <p className='text-center font-semibold'>{recipeId ? 'Invalid' : 'Unset'}</p>
         </div>
@@ -300,7 +307,7 @@ export function RecipeNode(props: NodeProps<RecipeNodeData>) {
   const { ingredients, products } = recipe;
 
   return (
-    <BaseNode {...props} backgroundColor={defaultNodeColor.recipe} factoryIO={factoryIO} counterRotate='images'>
+    <BaseNode {...props} backgroundColor={defaultNodeColor.recipe} factoryIO={factoryIO} counterRotate='images' size={140}>
       <div className='flex h-36 w-36 flex-col items-center justify-center'>
         <div className='grid grid-flow-col grid-rows-12 place-items-center gap-0.5'>
           {items?.map(({ iconPath, displayName }, i) => {
@@ -466,7 +473,7 @@ export function LogisticNode(props: NodeProps<LogisticNodeData>) {
   const { factoryIO } = useDocs(d => computeLogisticNode({ data: props.data, d }), [JSON.stringify(props.data)]);
 
   return (
-    <BaseNode {...props} factoryIO={factoryIO} backgroundColor={defaultNodeColor.logistic}>
+    <BaseNode {...props} factoryIO={factoryIO} backgroundColor={defaultNodeColor.logistic} size={40}>
       <div className='flex h-8 w-8 flex-col items-center justify-center'></div>
     </BaseNode>
   );
