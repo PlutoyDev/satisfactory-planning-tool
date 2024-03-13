@@ -27,6 +27,7 @@ import type {
   EdgeRemoveChange,
   IsValidConnection,
 } from '@xyflow/react';
+import { applyNodeChanges } from '@xyflow/react';
 import type { NodeTypeKeys, FactoryNodeProperties } from '../components/FactoryGraph';
 import { pick } from 'lodash';
 import { ProductionLineInfo } from './productionLine';
@@ -446,77 +447,79 @@ export function createApplicaionStore(navigate: NavigateFn, { items, recipes }: 
       set({ edges: edges.map(e => (e.id === id ? { ...e, data } : e)), isSaved: false });
     },
     onNodesChange: changes => {
-      const { nodes: eNodes, selNode, deboucedChanges, collectedChanges } = get();
-      const changedMap = new Map<string, Node>();
-      const saveableChangeNodeIds = new Set<string>();
-      const deleteNodeIds = new Set<string>();
+      console.log('onNodesChange', JSON.stringify(changes));
+      set({ nodes: applyNodeChanges(changes, get().nodes), isSaved: false });
+      // const { nodes: eNodes, selNode, deboucedChanges, collectedChanges } = get();
+      // const changedMap = new Map<string, Node>();
+      // const saveableChangeNodeIds = new Set<string>();
+      // const deleteNodeIds = new Set<string>();
 
-      for (const change of changes) {
-        if (change.type === 'add') {
-          changedMap.set(change.item.id, change.item);
-          saveableChangeNodeIds.add(change.item.id);
-        } else if (change.type === 'remove') {
-          deleteNodeIds.add(change.id);
-        } else if (change.type === 'replace') {
-          changedMap.set(change.id, change.item);
-          saveableChangeNodeIds.add(change.id);
-        } else {
-          let node = changedMap.get(change.id);
-          if (!node) {
-            node = eNodes.find(n => n.id === change.id);
-            if (node) {
-              node = { ...node }; // Make a copy, the node will be mutated in the next step
-              changedMap.set(node.id, node);
-            } else {
-              throw new Error(`Node with id ${change.id} not found`);
-            }
-          }
+      // for (const change of changes) {
+      //   if (change.type === 'add') {
+      //     changedMap.set(change.item.id, change.item);
+      //     saveableChangeNodeIds.add(change.item.id);
+      //   } else if (change.type === 'remove') {
+      //     deleteNodeIds.add(change.id);
+      //   } else if (change.type === 'replace') {
+      //     changedMap.set(change.id, change.item);
+      //     saveableChangeNodeIds.add(change.id);
+      //   } else {
+      //     let node = changedMap.get(change.id);
+      //     if (!node) {
+      //       node = eNodes.find(n => n.id === change.id);
+      //       if (node) {
+      //         node = { ...node }; // Make a copy, the node will be mutated in the next step
+      //         changedMap.set(node.id, node);
+      //       } else {
+      //         throw new Error(`Node with id ${change.id} not found`);
+      //       }
+      //     }
 
-          if (change.type === 'position') {
-            const { position, positionAbsolute, dragging } = change;
-            if (position) {
-              node.position = position;
-              saveableChangeNodeIds.add(node.id);
-            }
-            if (positionAbsolute) {
-              node.computed ??= {};
-              node.computed.positionAbsolute = change.positionAbsolute;
-            }
-            if (dragging !== undefined) {
-              node.dragging = dragging;
-            }
-          } else if (change.type === 'dimensions') {
-            const { dimensions, resizing } = change;
-            if (dimensions) {
-              node.computed ??= {};
-              node.computed.width = dimensions.width;
-              node.computed.height = dimensions.height;
-              if (resizing) {
-                node.width = dimensions.width;
-                node.height = dimensions.height;
-              }
-            }
+      //     if (change.type === 'position') {
+      //       const { position, positionAbsolute, dragging } = change;
+      //       if (position) {
+      //         node.position = position;
+      //         saveableChangeNodeIds.add(node.id);
+      //       }
+      //       if (positionAbsolute) {
+      //         node.computed ??= {};
+      //         node.computed.positionAbsolute = change.positionAbsolute;
+      //       }
+      //       if (dragging !== undefined) {
+      //         node.dragging = dragging;
+      //       }
+      //     } else if (change.type === 'dimensions') {
+      //       const { dimensions, resizing } = change;
+      //       if (dimensions) {
+      //         node.computed ??= {};
+      //         node.computed.width = dimensions.width;
+      //         node.computed.height = dimensions.height;
+      //         if (resizing) {
+      //           node.width = dimensions.width;
+      //           node.height = dimensions.height;
+      //         }
+      //       }
 
-            if (resizing !== undefined) {
-              node.resizing = resizing;
-            }
-          } else if (change.type === 'select') {
-            node.selected = change.selected;
-          }
-        }
-      }
+      //       if (resizing !== undefined) {
+      //         node.resizing = resizing;
+      //       }
+      //     } else if (change.type === 'select') {
+      //       node.selected = change.selected;
+      //     }
+      //   }
+      // }
 
-      set({
-        nodes: [...changedMap.values(), ...eNodes.filter(n => !changedMap.has(n.id) && !deleteNodeIds.has(n.id))],
-        selNode: selNode && (changedMap.has(selNode?.id) ? changedMap.get(selNode.id) : selNode),
-        isSaved: false,
-      });
+      // set({
+      //   nodes: [...changedMap.values(), ...eNodes.filter(n => !changedMap.has(n.id) && !deleteNodeIds.has(n.id))],
+      //   selNode: selNode && (changedMap.has(selNode?.id) ? changedMap.get(selNode.id) : selNode),
+      //   isSaved: false,
+      // });
 
-      if (saveableChangeNodeIds.size > 0 || deleteNodeIds.size > 0) {
-        saveableChangeNodeIds.forEach(id => collectedChanges.nodeChanged.add(id));
-        deleteNodeIds.forEach(id => collectedChanges.nodeDeleted.add(id));
-        deboucedChanges();
-      }
+      // if (saveableChangeNodeIds.size > 0 || deleteNodeIds.size > 0) {
+      //   saveableChangeNodeIds.forEach(id => collectedChanges.nodeChanged.add(id));
+      //   deleteNodeIds.forEach(id => collectedChanges.nodeDeleted.add(id));
+      //   deboucedChanges();
+      // }
     },
     onEdgesChange: changes => {
       // const eEdges = get().edges;
@@ -599,13 +602,13 @@ export function createApplicaionStore(navigate: NavigateFn, { items, recipes }: 
         return;
       }
       const position = rfInstance.screenToFlowPosition({ x: e.clientX, y: e.clientY });
-      const node = { id: nanoid(), type, position, selected: true, data: {} };
+      const node = { id: nanoid(), type, position, data: {} };
       const changes: NodeChange[] = [{ type: 'add', item: node }];
-      if (selNode) {
-        changes.push({ type: 'select', id: selNode.id, selected: false });
-      }
+      // if (selNode) {
+      //   changes.push({ type: 'select', id: selNode.id, selected: false });
+      // }
       onNodesChange(changes);
-      onSelectionChange({ nodes: [node], edges: [] });
+      // onSelectionChange({ nodes: [node], edges: [] });
     },
     onSelectionChange: ({ nodes, edges }) => {
       const { selNode, selEdge } = get();
